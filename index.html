@@ -79,9 +79,14 @@
         }
         .btn-tac:hover { background: #0369a1; }
 
-        /* MAPA */
+        /* MAPA COM FILTRO TÁTICO ESCURO */
         #map-container { flex: 1; height: 100%; position: relative; }
-        #map { width: 100%; height: 100%; background: #070a11; }
+        #map { 
+            width: 100%; 
+            height: 100%; 
+            background: #070a11;
+            filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+        }
 
         /* MODAL MIRA ÓPTICA (HUD) */
         #camera-hud-modal {
@@ -162,28 +167,20 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // Inicializa o mapa tático escuro
+        // Inicializa o mapa centralizado em Águas Formosas
         const map = L.map('map', { zoomControl: false }).setView([-17.0822, -40.9352], 14);
 
-        // Camada de Mapa Escuro sem necessidade de chave de API
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
+        // Servidor OpenStreetMap Público e Gratuito (Sem API Key)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
-            subdomains: 'abcd',
-            attribution: '© OpenStreetMap, © CARTO'
-        }).addTo(map);
-
-        // Adiciona nomes de cidades/ruas escuros por cima
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png', {
-            maxZoom: 19,
-            subdomains: 'abcd',
-            pane: 'markerPane'
+            attribution: '© OpenStreetMap'
         }).addTo(map);
 
         // Raio de alcance tático no mapa
         L.circle([-17.0822, -40.9352], {
             color: '#0284c7',
             fillColor: '#0284c7',
-            fillOpacity: 0.15,
+            fillOpacity: 0.25,
             radius: 1500
         }).addTo(map);
 
