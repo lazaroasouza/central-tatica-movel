@@ -2,287 +2,200 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>DedroneTracker.AI - Central de Comando Tático Móvel</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DedroneTracker.AI - Central Tática Móvel</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        * { box-sizing: border-box; }
-        body, html { margin: 0; padding: 0; height: 100vh; width: 100vw; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #e2e8f0; color: #1e293b; overflow: hidden; }
-        
-        #header { height: 50px; background: #1e293b; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; border-bottom: 2px solid #0f172a; width: 100vw; z-index: 2000; position: relative; }
-        .logo-area { display: flex; align-items: center; gap: 10px; color: #fff; font-weight: bold; font-size: 15px; }
-        .logo-area span { color: #38bdf8; }
-        
-        .alert-btn { background: #ef4444; color: #fff; border: none; padding: 6px 20px; font-weight: bold; border-radius: 4px; cursor: pointer; font-size: 13px; letter-spacing: 1px; box-shadow: 0 0 10px rgba(239, 68, 68, 0.5); }
-        .alert-btn:hover { background: #dc2626; }
-        
-        .nav-menu { display: flex; align-items: center; gap: 18px; font-size: 12px; font-weight: 600; color: #94a3b8; }
-        .nav-menu a { color: #cbd5e1; text-decoration: none; cursor: pointer; padding: 4px 8px; border-radius: 3px; transition: 0.2s; }
-        .nav-menu a:hover, .nav-menu a.active { color: #38bdf8; background: rgba(56, 189, 248, 0.1); }
+        :root {
+            --bg-dark: #070a11;
+            --panel-bg: rgba(13, 20, 36, 0.95);
+            --border-color: #1e293b;
+            --accent-cyan: #38bdf8;
+            --accent-red: #f43f5e;
+            --accent-green: #10b981;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
 
-        #wrapper { display: flex; flex-direction: row; height: calc(100vh - 50px); width: 100vw; overflow: hidden; }
-        
-        #left-sidebar { width: 340px; min-width: 340px; background: #f8fafc; border-right: 1px solid #cbd5e1; display: flex; flex-direction: column; z-index: 1000; height: 100%; }
-        
-        .monitoring-header { background: #f1f5f9; padding: 8px 12px; font-size: 11px; font-weight: bold; color: #0284c7; border-bottom: 1px solid #cbd5e1; display: flex; justify-content: space-between; }
-        
-        .tabs-container { display: flex; background: #e2e8f0; border-bottom: 1px solid #cbd5e1; }
-        .tab { flex: 1; padding: 8px; text-align: center; font-size: 12px; font-weight: bold; cursor: pointer; color: #64748b; background: #e2e8f0; }
-        .tab.active { background: #f8fafc; color: #0f172a; border-bottom: 2px solid #0284c7; }
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+        body, html { height: 100vh; width: 100vw; font-family: 'Segoe UI', monospace; background: var(--bg-dark); color: var(--text-main); overflow: hidden; }
 
-        .alert-summary { background: #fef2f2; color: #b91c1c; padding: 6px 12px; font-size: 11px; font-weight: bold; border-bottom: 1px solid #fecaca; }
+        /* HEADER TÁTICO */
+        #header {
+            height: 50px;
+            background: #0b1120;
+            border-bottom: 2px solid #0284c7;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            z-index: 2000;
+        }
+        .logo { font-weight: 900; font-size: 15px; color: #fff; letter-spacing: 1px; }
+        .logo span { color: var(--accent-cyan); }
+        .status-badge { font-size: 11px; color: var(--accent-green); background: rgba(16, 185, 129, 0.1); padding: 4px 8px; border-radius: 4px; border: 1px solid var(--accent-green); }
 
-        .target-list { max-height: 160px; overflow-y: auto; background: #fff; border-bottom: 1px solid #cbd5e1; }
-        .target-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; font-size: 11px; border-bottom: 1px solid #f1f5f9; cursor: pointer; }
-        .target-row:hover { background: #f1f5f9; }
-        .target-row.selected { background: #e0f2fe; border-left: 4px solid #0284c7; }
+        /* LAYOUT PRINCIPAL */
+        #wrapper { display: flex; height: calc(100vh - 50px); width: 100vw; }
 
-        .target-details { padding: 12px; background: #f8fafc; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
-        .details-title { font-size: 12px; font-weight: bold; color: #334155; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; }
-        .grid-info { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 11px; color: #475569; }
-        .grid-info b { color: #0f172a; }
+        /* PAINEL LATERAL */
+        #sidebar {
+            width: 360px;
+            background: var(--panel-bg);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            z-index: 1000;
+            padding: 15px;
+            gap: 15px;
+            box-shadow: 5px 0 15px rgba(0,0,0,0.5);
+        }
 
-        .action-buttons { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
-        .action-btn { background: #fff; border: 1px solid #cbd5e1; padding: 4px 8px; font-size: 10px; font-weight: bold; border-radius: 3px; cursor: pointer; color: #334155; }
-        .action-btn:hover { background: #f1f5f9; border-color: #94a3b8; }
+        .panel-block {
+            background: rgba(30, 41, 59, 0.4);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 12px;
+        }
 
-        .live-preview-box { height: 130px; background: #0f172a; border-radius: 4px; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 11px; }
-        .live-label { position: absolute; top: 6px; left: 6px; background: rgba(0,0,0,0.6); color: #fff; padding: 2px 6px; font-size: 9px; font-weight: bold; border-radius: 2px; }
+        .panel-title { font-size: 11px; font-weight: bold; color: var(--accent-cyan); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .target-data { font-size: 12px; color: var(--text-muted); display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+        .target-data span { color: var(--text-main); font-weight: bold; }
 
-        #map-section { flex: 1; display: flex; flex-direction: column; position: relative; height: 100%; }
-        #map { flex: 1; width: 100%; height: 100%; background: #e2e8f0; z-index: 1; }
+        .btn-tac {
+            background: #0284c7;
+            border: 1px solid #38bdf8;
+            color: #fff;
+            padding: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: center;
+            text-transform: uppercase;
+            width: 100%;
+            transition: all 0.2s;
+            box-shadow: 0 0 10px rgba(2, 132, 199, 0.3);
+        }
+        .btn-tac:hover { background: #0369a1; }
 
-        .bottom-bar { height: 35px; background: #1e293b; color: #cbd5e1; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; font-size: 11px; border-top: 1px solid #0f172a; z-index: 10; }
-        .legend-group { display: flex; align-items: center; gap: 15px; }
-        .legend-item { display: flex; align-items: center; gap: 5px; }
-        .dot { width: 8px; height: 8px; border-radius: 50%; }
-        .dot.red { background: #ef4444; }
-        .dot.yellow { background: #eab308; }
-        .dot.green { background: #22c55e; }
-        .dot.gray { background: #94a3b8; }
+        /* MAPA */
+        #map-container { flex: 1; height: 100%; position: relative; }
+        #map { width: 100%; height: 100%; background: #070a11; }
 
-        .radar-node { background: #0284c7; border: 2px solid #fff; width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 10px rgba(2, 132, 199, 0.8); }
-        .map-badge { background: #fff; border: 1px solid #cbd5e1; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.15); white-space: nowrap; }
-        .map-badge.drone { border-color: #eab308; color: #854d0e; background: #fefce8; }
-        .map-badge.pilot { border-color: #0284c7; color: #0369a1; background: #f0f9ff; }
+        /* MODAL MIRA ÓPTICA (HUD) */
+        #camera-hud-modal {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background: #000;
+            z-index: 5000;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        #camera-video { width: 100%; height: 100%; object-fit: cover; }
+        .hud-crosshair {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 240px; height: 240px;
+            border: 2px solid rgba(56, 189, 248, 0.6);
+            border-radius: 50%;
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .hud-crosshair::before { content: ''; position: absolute; width: 8px; height: 8px; background: var(--accent-red); border-radius: 50%; }
+        .hud-controls { position: absolute; bottom: 30px; display: flex; gap: 10px; width: 80%; max-width: 400px; z-index: 5001; }
     </style>
 </head>
 <body>
 
     <div id="header">
-        <div class="logo-area">
-            <span>[✖]</span> DedroneTracker.AI <span style="font-size:10px; color:#94a3b8; font-weight:normal;">| Mobile Tactical Command</span>
-        </div>
-        <button class="alert-btn" onclick="triggerAlert()">ALERT</button>
-        <div class="nav-menu">
-            <a class="active">HOME</a>
-            <a>PTZ</a>
-            <a>ALERTS</a>
-            <a>REPORTS</a>
-            <a>OPTIONS</a>
-            <a>HELP</a>
-            <a>ADMIN 👤</a>
-            <span style="color:#f59e0b;">🔔 GPS Ativo</span>
-        </div>
+        <div class="logo"><span>[✖] DEDRONE</span> TRACKER.AI — COMMAND</div>
+        <div class="status-badge">● MÓDULO OPERACIONAL ONLINE</div>
     </div>
 
     <div id="wrapper">
-        <div id="left-sidebar">
-            <div class="monitoring-header">
-                <span>▼ MONITORING (MÓVEL)</span>
-                <span id="system-time">--:--:--</span>
-            </div>
-            
-            <div class="tabs-container">
-                <div class="tab active">Verified</div>
-                <div class="tab">Unverified</div>
-            </div>
-
-            <div class="alert-summary">
-                Alert: <span id="alert-count">0</span> Active Threats
+        <div id="sidebar">
+            <div class="panel-block">
+                <div class="panel-title">MONITORAMENTO DE AMEAÇAS</div>
+                <div class="target-data">
+                    <div>ALERTAS: <span style="color:var(--accent-green)">0 ATIVOS</span></div>
+                    <div>SINAL: <span>100%</span></div>
+                    <div>GPS BASE: <span>ÁGUAS FORMOSAS</span></div>
+                    <div>MODO: <span>TÁTICO MÓVEL</span></div>
+                </div>
             </div>
 
-            <div class="target-list" id="target-list"></div>
+            <div class="panel-block">
+                <div class="panel-title">DETALHES DO ALVO</div>
+                <div class="target-data">
+                    <div>ID: <span>--</span></div>
+                    <div>MODELO: <span>--</span></div>
+                    <div>ALTITUDE: <span>-- m</span></div>
+                    <div>VELOCIDADE: <span>-- km/h</span></div>
+                </div>
+            </div>
 
-            <div class="target-details">
-                <div class="details-title" id="detail-header">DETAILS TARGET: --</div>
-                <div class="grid-info" id="detail-grid">
-                    <div>ID: <b id="d-id">--</b></div>
-                    <div>Model: <b id="d-model">--</b></div>
-                    <div>Location: <b id="d-loc">--</b></div>
-                    <div>Altitude: <b id="d-alt">-- m</b></div>
-                    <div>Speed: <b id="d-spd">-- m/s</b></div>
-                    <div>Heading: <b id="d-hdg">--°</b></div>
-                </div>
-                
-                <div style="font-size: 11px; font-weight: bold; color: #334155; margin-top: 4px;">Actions</div>
-                <div class="action-buttons">
-                    <button class="action-btn">Friend</button>
-                    <button class="action-btn">Foe</button>
-                    <button class="action-btn">More</button>
-                    <button class="action-btn">PTZ</button>
-                    <button class="action-btn">Verify</button>
-                    <button class="action-btn">Non-priority</button>
-                </div>
-
-                <div style="font-size: 11px; font-weight: bold; color: #334155; margin-top: 4px;">Live view / PTZ</div>
-                <div class="live-preview-box">
-                    <div class="live-label">PTZ CAM-01</div>
-                    <div style="text-align: center; color: #94a3b8; padding: 10px;">
-                        <i>📷 Câmera óptica móvel<br><span id="ptz-status" style="color:#38bdf8;">Aguardando seleção</span></i>
-                    </div>
-                </div>
+            <div style="margin-top: auto;">
+                <button class="btn-tac" onclick="openCameraHUD()">📷 ATIVAR MIRA ÓPTICA (HUD)</button>
             </div>
         </div>
 
-        <div id="map-section">
+        <div id="map-container">
             <div id="map"></div>
-            
-            <div class="bottom-bar">
-                <div class="legend-group">
-                    <span style="font-weight:bold;">Base GPS:</span>
-                    <span id="gps-coords" style="color: #38bdf8;">Obtendo localização atual...</span>
-                </div>
-                <div id="clock-display" style="font-weight: bold; color: #38bdf8;">--:--:--</div>
-            </div>
+        </div>
+    </div>
+
+    <!-- MODAL CAMERA HUD -->
+    <div id="camera-hud-modal">
+        <video id="camera-video" autoplay playsinline></video>
+        <div class="hud-crosshair"></div>
+        <div class="hud-controls">
+            <button class="btn-tac" style="background:#9f1239; border-color:#f43f5e;" onclick="closeCameraHUD()">✖ FECHAR MIRA</button>
         </div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script>
-        let map = null;
-        let markers = {};
-        let targetsData = {};
-        let polylines = {};
-        let selectedTargetId = null;
-        let baseMarker = null;
-        let radarCircles = [];
-
-        // Inicializa o mapa com coordenadas padrão provisórias
-        map = L.map('map').setView([-17.0822, -40.9352], 13);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { 
-            maxZoom: 19, attribution: '&copy; OpenStreetMap' 
+        // Inicializa o mapa tático escuro
+        const map = L.map('map', { zoomControl: false }).setView([-17.0822, -40.9352], 14);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            maxZoom: 19,
+            subdomains: 'abcd',
+            attribution: '© OpenStreetMap, © CARTO'
         }).addTo(map);
 
-        const socket = io();
+        // Raio de alcance tático no mapa
+        L.circle([-17.0822, -40.9352], {
+            color: '#0284c7',
+            fillColor: '#0284c7',
+            fillOpacity: 0.1,
+            radius: 1500
+        }).addTo(map);
 
-        // CAPTURA A GEOLOCALIZAÇÃO REAL DO NAVEGADOR (ONDE QUER QUE VOCÊ ESTEJA)
-        if ("geolocation" in navigator) {
-            navigator.geolocation.getCurrentPosition((position) => {
-                const userLat = position.coords.latitude;
-                const userLng = position.coords.longitude;
-
-                document.getElementById('gps-coords').innerText = `Lat: ${userLat.toFixed(4)}, Lng: ${userLng.toFixed(4)}`;
-                
-                // Centraliza o mapa na sua posição atual real
-                map.setView([userLat, userLng], 14);
-
-                // Desenha a base móvel e os círculos de radar no local exato
-                updateBaseOnMap(userLat, userLng);
-
-                // Informa o servidor backend sobre a nova posição da base para puxar aviões locais
-                fetch('/api/update-base', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ lat: userLat, lng: userLng })
-                });
-
-            }, (error) => {
-                console.warn("Geolocalização negada ou indisponível. Usando padrão.");
-                updateBaseOnMap(-17.0822, -40.9352);
-            }, { enableHighAccuracy: true });
-        }
-
-        function updateBaseOnMap(lat, lng) {
-            if (baseMarker) map.removeLayer(baseMarker);
-            radarCircles.forEach(c => map.removeLayer(c));
-            radarCircles = [];
-
-            const sensorIcon = L.divIcon({ html: `<div class="radar-node" title="Sua Base Móvel"></div>`, className: '', iconSize: [12, 12], iconAnchor: [6, 6] });
-            baseMarker = L.marker([lat, lng], { icon: sensorIcon }).addTo(map);
-
-            radarCircles.push(L.circle([lat, lng], { color: '#0284c7', fillColor: '#38bdf8', fillOpacity: 0.05, radius: 2000, weight: 1 }).addTo(map));
-            radarCircles.push(L.circle([lat, lng], { color: '#0284c7', fillColor: '#38bdf8', fillOpacity: 0.02, radius: 5000, weight: 1, dashArray: '5, 5' }).addTo(map));
-        }
-
-        socket.on('target-update', (data) => {
-            targetsData[data.id] = data;
-            renderTargetList();
-            renderMapMarker(data);
-            
-            if (selectedTargetId === data.id) {
-                updateDetailsPanel(data);
-            }
-        });
-
-        function renderTargetList() {
-            const listEl = document.getElementById('target-list');
-            const keys = Object.keys(targetsData);
-            document.getElementById('alert-count').innerText = keys.length;
-
-            if (keys.length === 0) {
-                listEl.innerHTML = `<div style="padding: 15px; text-align:center; color:#94a3b8; font-size:11px;">Varrendo espaço aéreo na sua região...</div>`;
-                return;
-            }
-
-            listEl.innerHTML = '';
-            keys.forEach(id => {
-                const item = targetsData[id];
-                const row = document.createElement('div');
-                row.className = `target-row ${selectedTargetId === id ? 'selected' : ''}`;
-                
-                let iconSymbol = item.type === 'REMOTE_CONTROL' ? '🕹️' : (item.type === 'AVIAO_COMERCIAL' ? '✈️' : '🛸');
-                
-                row.innerHTML = `
-                    <div><b>${iconSymbol} ${item.id}</b> <span style="color:#64748b;">(${item.type})</span></div>
-                    <div style="color:#64748b;">${item.timestamp}</div>
-                `;
-                
-                row.onclick = () => {
-                    selectedTargetId = id;
-                    map.flyTo([item.lat, item.lng], 15);
-                    updateDetailsPanel(item);
-                    renderTargetList();
-                };
-                listEl.appendChild(row);
-            });
-        }
-
-        function updateDetailsPanel(item) {
-            document.getElementById('detail-header').innerText = `DETAILS TARGET: ${item.id}`;
-            document.getElementById('d-id').innerText = item.id;
-            document.getElementById('d-model').innerText = item.type;
-            document.getElementById('d-loc').innerText = `${item.lat.toFixed(4)}, ${item.lng.toFixed(4)}`;
-            document.getElementById('d-alt').innerText = `${item.altitude} m`;
-            document.getElementById('d-spd').innerText = `${item.speed} m/s`;
-            document.getElementById('d-hdg').innerText = `${item.heading}°`;
-            document.getElementById('ptz-status').innerText = `Focado no alvo: ${item.id}`;
-        }
-
-        function renderMapMarker(item) {
-            let badgeClass = item.type === 'REMOTE_CONTROL' ? 'pilot' : 'drone';
-            let iconSymbol = item.type === 'REMOTE_CONTROL' ? '🕹️ Pilot' : (item.type === 'AVIAO_COMERCIAL' ? '✈️ Avião' : '🛸 Drone');
-            
-            const htmlLabel = `<div class="map-badge ${badgeClass}">${iconSymbol}<br>ID: ${item.id} | Alt: ${item.altitude}m</div>`;
-            const customIcon = L.divIcon({ html: htmlLabel, className: '', iconSize: [110, 35], iconAnchor: [55, 17] });
-
-            if (markers[item.id]) {
-                markers[item.id].setLatLng([item.lat, item.lng]);
-                markers[item.id].setIcon(customIcon);
-            } else {
-                markers[item.id] = L.marker([item.lat, item.lng], { icon: customIcon }).addTo(map);
+        // Controle da Câmera PTZ / HUD
+        let mediaStream = null;
+        async function openCameraHUD() {
+            const modal = document.getElementById('camera-hud-modal');
+            const video = document.getElementById('camera-video');
+            try {
+                mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                video.srcObject = mediaStream;
+                modal.style.display = 'flex';
+            } catch (err) {
+                alert("Não foi possível acessar a câmera do dispositivo.");
             }
         }
 
-        function triggerAlert() {
-            alert("⚠️ ALERTA GERAL ATIVADO! Perímetro sob vigilância móvel.");
+        function closeCameraHUD() {
+            if (mediaStream) mediaStream.getTracks().forEach(track => track.stop());
+            document.getElementById('camera-hud-modal').style.display = 'none';
         }
-
-        setInterval(() => {
-            const now = new Date().toLocaleTimeString();
-            document.getElementById('system-time').innerText = now;
-            document.getElementById('clock-display').innerText = now;
-        }, 1000);
     </script>
 </body>
 </html>
