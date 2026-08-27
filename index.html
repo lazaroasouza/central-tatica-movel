@@ -79,7 +79,7 @@
             cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
         }
 
-        /* REGRAS ESPECÍFICAS PARA MOBILE */
+        /* MOBILE OVERRIDES */
         @media (max-width: 768px) {
             #sidebar {
                 position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -89,12 +89,26 @@
             #sidebar.open { transform: translateY(0); }
         }
 
-        /* MODAL HUD IA */
-        #camera-hud-modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; z-index: 5000; display: none; }
-        #camera-video { width: 100%; height: 100%; object-fit: cover; position: absolute; }
-        #ai-canvas { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 5001; pointer-events: none; }
-        .hud-overlay { position: absolute; top: 20px; left: 20px; z-index: 5002; color: var(--accent-red); font-weight: bold; font-size: 12px; text-shadow: 0 0 5px #000; }
-        .hud-controls { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 5002; width: 80%; max-width: 300px; }
+        /* MODAL HUD IA CORRIGIDO */
+        #camera-hud-modal { 
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
+            background: #000; z-index: 9000; display: none; overflow: hidden;
+        }
+        #camera-video { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; z-index: 9001; }
+        #ai-canvas { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 9002; pointer-events: none; }
+        
+        .hud-overlay { 
+            position: absolute; top: calc(20px + env(safe-area-inset-top, 0px)); left: 15px; 
+            z-index: 9003; color: var(--accent-cyan); font-weight: bold; font-size: 11px; 
+            text-shadow: 0 0 4px #000; background: rgba(0,0,0,0.6); padding: 6px 10px; border-radius: 4px;
+        }
+        
+        #btn-close-hud {
+            position: absolute; top: calc(15px + env(safe-area-inset-top, 0px)); right: 15px; 
+            z-index: 10000; background: #f43f5e; border: 1px solid #fff; color: #fff;
+            padding: 8px 14px; font-size: 11px; font-weight: bold; border-radius: 20px;
+            cursor: pointer; box-shadow: 0 0 10px rgba(0,0,0,0.8);
+        }
     </style>
 </head>
 <body>
@@ -149,12 +163,10 @@
 
     <!-- HUD COM IA -->
     <div id="camera-hud-modal">
+        <button id="btn-close-hud" onclick="closeCameraHUD()">✖ FECHAR MIRA</button>
         <video id="camera-video" autoplay playsinline muted></video>
         <canvas id="ai-canvas"></canvas>
-        <div class="hud-overlay" id="hud-alert">Buscando assinaturas visuais...</div>
-        <div class="hud-controls">
-            <button class="btn-tac" style="background:#9f1239; border-color:#f43f5e;" onclick="closeCameraHUD()">✖ FECHAR MIRA TÁTICA</button>
-        </div>
+        <div class="hud-overlay" id="hud-alert">Escaneando setor visual...</div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -196,6 +208,7 @@
         // TENSORFLOW IA
         let aiModel = null;
         let isDetecting = false;
+        let currentStream = null;
         let videoEl = document.getElementById('camera-video');
         let canvasEl = document.getElementById('ai-canvas');
         let ctx = canvasEl.getContext('2d');
@@ -209,21 +222,29 @@
         async function openCameraHUD() {
             document.getElementById('camera-hud-modal').style.display = 'block';
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-                videoEl.srcObject = stream;
+                currentStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } } 
+                });
+                videoEl.srcObject = currentStream;
                 videoEl.onloadedmetadata = () => {
                     canvasEl.width = videoEl.videoWidth;
                     canvasEl.height = videoEl.videoHeight;
                     isDetecting = true;
                     detectFrame();
                 };
-            } catch(e) { alert("Erro na câmera: " + e); }
+            } catch(e) { 
+                alert("Erro na câmera: " + e); 
+                closeCameraHUD();
+            }
         }
 
         function closeCameraHUD() {
             isDetecting = false;
-            let stream = videoEl.srcObject;
-            if(stream) stream.getTracks().forEach(t => t.stop());
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+                currentStream = null;
+            }
+            videoEl.srcObject = null;
             document.getElementById('camera-hud-modal').style.display = 'none';
         }
 
@@ -243,7 +264,8 @@
                     ctx.strokeStyle = '#f43f5e';
                     ctx.stroke();
                     ctx.fillStyle = '#f43f5e';
-                    ctx.fillText(`POSSÍVEL DRONE / UAV - ${(pred.score*100).toFixed(1)}%`, pred.bbox[0], pred.bbox[1] > 10 ? pred.bbox[1] - 5 : 10);
+                    ctx.font = '14px monospace';
+                    ctx.fillText(`POSSÍVEL DRONE / UAV - ${(pred.score*100).toFixed(1)}%`, pred.bbox[0], pred.bbox[1] > 10 ? pred.bbox[1] - 5 : 15);
 
                     document.getElementById('tgt-source').innerText = "VISUAL (IA ÓPTICA)";
                     document.getElementById('tgt-conf').innerText = `${(pred.score*100).toFixed(1)}%`;
@@ -258,7 +280,9 @@
                 document.getElementById('hud-alert').style.color = "#38bdf8";
             }
 
-            requestAnimationFrame(detectFrame);
+            if(isDetecting) {
+                requestAnimationFrame(detectFrame);
+            }
         }
 
         // SONAR ACÚSTICO
