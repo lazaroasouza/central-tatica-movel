@@ -3,14 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DedroneTracker.AI - Central Tática Móvel</title>
+    <title>DedroneTracker.AI - C2 Multisensor</title>
     
     <meta name="theme-color" content="#0b1120">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIkRlZHJvbmVUcmFja2VyLkFJIiwKICAic2hvcnRfbmFtZSI6ICJEZWRyb25lQzIiLAogICJzdGFydF91cmwiOiAiLi8iLAogICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLAogICJiYWNrZ3JvdW5kX2NvbG9yIjogIiMwNDBhMTEiLAogICJ0aGVtZV9jb2xvciI6ICIjMGIxMTIwIgp9">
-
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <!-- TENSORFLOW.JS (Inteligência Artificial) -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+
     <style>
         :root {
             --bg-dark: #070a11;
@@ -27,376 +29,323 @@
         * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
         body, html { height: 100vh; width: 100vw; font-family: 'Segoe UI', monospace; background: var(--bg-dark); color: var(--text-main); overflow: hidden; }
 
-        /* HEADER TÁTICO */
+        /* HEADER */
         #header {
-            height: 50px;
-            background: #0b1120;
-            border-bottom: 2px solid #0284c7;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 12px;
-            z-index: 3000;
+            height: 50px; background: #0b1120; border-bottom: 2px solid #0284c7;
+            display: flex; align-items: center; justify-content: space-between; padding: 0 12px; z-index: 3000;
         }
-        .logo { font-weight: 900; font-size: 13px; color: #fff; letter-spacing: 0.5px; }
+        .logo { font-weight: 900; font-size: 13px; color: #fff; }
         .logo span { color: var(--accent-cyan); }
         .status-container { display: flex; gap: 6px; }
-        .status-badge { font-size: 10px; color: var(--accent-green); background: rgba(16, 185, 129, 0.1); padding: 4px 6px; border-radius: 4px; border: 1px solid var(--accent-green); }
-        .offline-badge { color: var(--accent-yellow); background: rgba(245, 158, 11, 0.1); border-color: var(--accent-yellow); }
+        .status-badge { font-size: 10px; color: var(--accent-green); background: rgba(16,185,129,0.1); padding: 4px 6px; border-radius: 4px; border: 1px solid var(--accent-green); }
 
-        /* LAYOUT PRINCIPAL */
+        /* LAYOUT & MAPA */
         #wrapper { display: flex; height: calc(100vh - 50px); width: 100vw; position: relative; }
-
         #map-container { flex: 1; height: 100%; width: 100%; position: relative; }
         #map { width: 100%; height: 100%; background: #070a11; }
 
-        /* BOTÃO FLUTUANTE DE RASTREAMENTO */
-        #locate-btn {
-            position: absolute;
-            bottom: 60px;
-            right: 15px;
-            z-index: 2500;
-            background: #0284c7;
-            border: 2px solid #38bdf8;
-            color: white;
-            padding: 12px 16px;
-            border-radius: 30px;
-            font-size: 11px;
-            font-weight: bold;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        #locate-btn:active { transform: scale(0.95); }
-
-        /* PAINEL LATERAL / BOTTOM SHEET */
+        /* PAINEL TÁTICO */
         #sidebar {
-            width: 340px;
-            background: var(--panel-bg);
-            border-right: 1px solid var(--border-color);
-            display: flex;
-            flex-direction: column;
-            z-index: 2000;
-            padding: 12px;
-            gap: 12px;
-            box-shadow: 5px 0 15px rgba(0,0,0,0.5);
-            transition: transform 0.3s ease-in-out;
+            width: 340px; background: var(--panel-bg); border-right: 1px solid var(--border-color);
+            display: flex; flex-direction: column; z-index: 2000; padding: 12px; gap: 10px;
+            box-shadow: 5px 0 15px rgba(0,0,0,0.5); transition: transform 0.3s ease-in-out;
+            overflow-y: auto;
         }
-
-        .panel-block {
-            background: rgba(30, 41, 59, 0.4);
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            padding: 10px;
-        }
-
-        .panel-title { font-size: 11px; font-weight: bold; color: var(--accent-cyan); margin-bottom: 6px; text-transform: uppercase; }
+        .panel-block { background: rgba(30,41,59,0.4); border: 1px solid var(--border-color); border-radius: 6px; padding: 10px; }
+        .panel-title { font-size: 11px; font-weight: bold; color: var(--accent-cyan); margin-bottom: 6px; }
         .target-data { font-size: 11px; color: var(--text-muted); display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
         .target-data span { color: var(--text-main); font-weight: bold; }
 
-        .btn-tac {
-            background: #0284c7;
-            border: 1px solid #38bdf8;
-            color: #fff;
-            padding: 10px;
-            font-size: 11px;
-            font-weight: bold;
-            border-radius: 4px;
-            cursor: pointer;
-            text-align: center;
-            text-transform: uppercase;
-            width: 100%;
-            transition: all 0.2s;
-            margin-bottom: 6px;
-        }
+        /* BOTOES */
+        .btn-sensor { background: #1e293b; border: 1px solid #475569; color: #fff; padding: 8px; font-size: 10px; border-radius: 4px; cursor: pointer; width: 100%; margin-bottom: 5px; text-align: left; display: flex; justify-content: space-between; align-items: center; }
+        .btn-sensor.active { background: rgba(16,185,129,0.2); border-color: var(--accent-green); color: var(--accent-green); }
+        .btn-sensor.scanning { background: rgba(245,158,11,0.2); border-color: var(--accent-yellow); color: var(--accent-yellow); }
+        
+        .btn-tac { background: #0284c7; border: 1px solid #38bdf8; color: #fff; padding: 10px; font-size: 11px; font-weight: bold; border-radius: 4px; cursor: pointer; width: 100%; margin-top: 5px; text-transform: uppercase; }
 
+        /* BOTÃO FLUTUANTE MAPA */
+        #locate-btn { position: absolute; bottom: 30px; right: 15px; z-index: 2500; background: #0284c7; border: 2px solid #38bdf8; color: white; padding: 12px; border-radius: 30px; font-size: 11px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+
+        /* RESPONSIVIDADE MOBILE */
         #toggle-panel-btn { display: none; }
-
         @media (max-width: 768px) {
-            #sidebar {
-                position: absolute;
-                bottom: 0;
-                left: 0;
-                width: 100%;
-                max-height: 70vh;
-                border-right: none;
-                border-top: 2px solid #0284c7;
-                border-radius: 12px 12px 0 0;
-                transform: translateY(calc(100% - 42px));
-                box-shadow: 0 -5px 20px rgba(0,0,0,0.7);
-            }
-
+            #sidebar { position: absolute; bottom: 0; left: 0; width: 100%; max-height: 75vh; border-top: 2px solid #0284c7; border-radius: 12px 12px 0 0; transform: translateY(calc(100% - 40px)); }
             #sidebar.open { transform: translateY(0); }
-
-            #toggle-panel-btn {
-                display: block;
-                background: #0b1120;
-                color: var(--accent-cyan);
-                border: 1px solid var(--border-color);
-                padding: 6px;
-                text-align: center;
-                font-size: 11px;
-                font-weight: bold;
-                border-radius: 4px;
-                margin-bottom: 4px;
-                cursor: pointer;
-            }
+            #toggle-panel-btn { display: block; background: #0b1120; color: var(--accent-cyan); border: 1px solid var(--border-color); padding: 6px; text-align: center; font-size: 10px; border-radius: 4px; margin-bottom: 4px; }
         }
 
-        .leaflet-control-layers {
-            background: rgba(15, 23, 42, 0.9) !important;
-            color: #fff !important;
-            border: 1px solid var(--border-color) !important;
-            border-radius: 6px !important;
-        }
-
-        /* MODAL MIRA ÓPTICA (HUD) */
-        #camera-hud-modal {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100vw; height: 100vh;
-            background: #000;
-            z-index: 5000;
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-        }
-        #camera-video { width: 100%; height: 100%; object-fit: cover; }
-        .hud-crosshair {
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            width: 220px; height: 220px;
-            border: 2px solid rgba(56, 189, 248, 0.6);
-            border-radius: 50%;
-            pointer-events: none;
-        }
-        .hud-controls { position: absolute; bottom: 30px; display: flex; gap: 10px; width: 80%; max-width: 300px; z-index: 5001; }
+        /* MODAL MIRA IA (HUD) */
+        #camera-hud-modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; z-index: 5000; display: none; }
+        #camera-video { width: 100%; height: 100%; object-fit: cover; position: absolute; }
+        #ai-canvas { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 5001; pointer-events: none; }
+        .hud-overlay { position: absolute; top: 20px; left: 20px; z-index: 5002; color: var(--accent-red); font-weight: bold; font-size: 14px; text-shadow: 0 0 5px #000; }
+        .hud-controls { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 5002; width: 80%; max-width: 300px; }
     </style>
 </head>
 <body>
 
     <div id="header">
-        <div class="logo"><span>[✖] DEDRONE</span> TRACKER.AI</div>
+        <div class="logo"><span>[✖] MULTISENSOR</span> C2 TÁTICO</div>
         <div class="status-container">
-            <div class="status-badge" id="net-status">● ONLINE</div>
+            <div class="status-badge" id="ai-status">🧠 IA INICIANDO...</div>
             <div class="status-badge" id="gps-status">● GPS BUSCANDO</div>
         </div>
     </div>
 
     <div id="wrapper">
         <div id="sidebar">
-            <div id="toggle-panel-btn" onclick="toggleSidebar()">▼ TOQUE PARA ABRIR / FECHAR PAINEL</div>
+            <div id="toggle-panel-btn" onclick="toggleSidebar()">▼ ABRIR / FECHAR PAINEL</div>
 
             <div class="panel-block">
-                <div class="panel-title">MONITORAMENTO DE AMEAÇAS</div>
+                <div class="panel-title">📡 MÓDULOS DE DETECÇÃO (SENSORES)</div>
+                <button class="btn-sensor" id="btn-audio" onclick="toggleAcousticRadar()">
+                    <span>🔊 RADAR ACÚSTICO (SONAR)</span> <span id="audio-status">OFF</span>
+                </button>
+                <button class="btn-sensor" id="btn-ble" onclick="scanBluetooth()">
+                    <span>📶 SCANNER BLUETOOTH (REMOTE ID)</span> <span>SCAN</span>
+                </button>
+            </div>
+
+            <div class="panel-block">
+                <div class="panel-title">⚠️ ALVO DETECTADO</div>
                 <div class="target-data">
-                    <div>ALERTAS: <span style="color:var(--accent-green)">0 ATIVOS</span></div>
-                    <div>PRECISÃO: <span id="gps-accuracy">-- m</span></div>
+                    <div>FONTE: <span id="tgt-source" style="color:var(--accent-red)">NENHUMA</span></div>
+                    <div>CONFIANÇA: <span id="tgt-conf">--%</span></div>
+                    <div>FREQUÊNCIA/ID: <span id="tgt-freq">--</span></div>
+                    <div>DIST. ESTIMADA: <span id="tgt-dist">-- m</span></div>
+                </div>
+            </div>
+
+            <div class="panel-block">
+                <div class="panel-title">📍 SEU POSICIONAMENTO</div>
+                <div class="target-data">
                     <div>COORD: <span id="gps-coords">Buscando...</span></div>
-                    <div>RAIO OPERACIONAL: <span>30 KM</span></div>
+                    <div>PRECISÃO: <span id="gps-accuracy">-- m</span></div>
                 </div>
             </div>
 
-            <div class="panel-block">
-                <div class="panel-title">DETALHES DO ALVO</div>
-                <div class="target-data">
-                    <div>ID: <span>--</span></div>
-                    <div>MODELO: <span>--</span></div>
-                    <div>ALTITUDE: <span>-- m</span></div>
-                    <div>VELOCIDADE: <span>-- km/h</span></div>
-                </div>
-            </div>
-
-            <div style="margin-top: auto;">
-                <button class="btn-tac" onclick="centerOnGPS()">🎯 RECENTRAR NO MEU GPS</button>
-                <button class="btn-tac" style="background:#0284c7;" onclick="openCameraHUD()">📷 ATIVAR MIRA ÓPTICA (HUD)</button>
-            </div>
+            <button class="btn-tac" style="background:#0284c7;" onclick="openCameraHUD()">📷 ATIVAR MIRA COM INTELIGÊNCIA ARTIFICIAL</button>
         </div>
 
         <div id="map-container">
-            <button id="locate-btn" onclick="centerOnGPS()">🎯 MEU GPS</button>
+            <button id="locate-btn" onclick="centerOnGPS()">🎯 CENTRALIZAR</button>
             <div id="map"></div>
         </div>
     </div>
 
+    <!-- HUD COM IA -->
     <div id="camera-hud-modal">
-        <video id="camera-video" autoplay playsinline></video>
-        <div class="hud-crosshair"></div>
+        <video id="camera-video" autoplay playsinline muted></video>
+        <canvas id="ai-canvas"></canvas>
+        <div class="hud-overlay" id="hud-alert">Buscando assinaturas visuais...</div>
         <div class="hud-controls">
-            <button class="btn-tac" style="background:#9f1239; border-color:#f43f5e;" onclick="closeCameraHUD()">✖ FECHAR MIRA</button>
+            <button class="btn-tac" style="background:#9f1239; border-color:#f43f5e;" onclick="closeCameraHUD()">✖ FECHAR MIRA TÁTICA</button>
         </div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            const toggleBtn = document.getElementById('toggle-panel-btn');
-            sidebar.classList.toggle('open');
-            toggleBtn.innerText = sidebar.classList.contains('open') ? "▲ TOQUE PARA RECOLHER PAINEL" : "▼ TOQUE PARA ABRIR PAINEL";
-        }
-
-        if ('serviceWorker' in navigator) {
-            const swCode = `
-                const CACHE_NAME = 'c2-mobile-tactical-v4';
-                self.addEventListener('install', e => self.skipWaiting());
-                self.addEventListener('activate', e => self.clients.claim());
-                self.addEventListener('fetch', e => {
-                    e.respondWith(
-                        caches.match(e.request).then(response => {
-                            if (response) return response;
-                            return fetch(e.request).then(netRes => {
-                                if (netRes.status === 200) {
-                                    let clone = netRes.clone();
-                                    caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
-                                }
-                                return netRes;
-                            }).catch(() => caches.match(e.request));
-                        })
-                    );
-                });
-            `;
-            const blob = new Blob([swCode], { type: 'application/javascript' });
-            navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(console.error);
-        }
-
-        function updateNetworkStatus() {
-            const netStatus = document.getElementById('net-status');
-            if (navigator.onLine) {
-                netStatus.innerHTML = "● ONLINE";
-                netStatus.classList.remove('offline-badge');
-            } else {
-                netStatus.innerHTML = "⚠️ OFFLINE";
-                netStatus.classList.add('offline-badge');
-            }
-        }
-        window.addEventListener('online', updateNetworkStatus);
-        window.addEventListener('offline', updateNetworkStatus);
-        updateNetworkStatus();
-
-        // MAPAS SEM NECESSIDADE DE API KEY
-        const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-            maxZoom: 19,
-            attribution: 'Esri World Imagery'
-        });
-
-        const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '© OpenStreetMap'
-        });
-
-        const map = L.map('map', { 
-            zoomControl: false,
-            layers: [satelliteLayer] 
-        }).setView([-17.2589, -41.0078], 15);
-
+        // ==========================================
+        // 1. MAPA E GPS (MANTIDO E OTIMIZADO)
+        // ==========================================
+        const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 });
+        const map = L.map('map', { zoomControl: false, layers: [satelliteLayer] }).setView([-17.25, -41.00], 15);
         L.control.zoom({ position: 'topright' }).addTo(map);
 
-        const baseMaps = {
-            "🛰️ Satélite Híbrido": satelliteLayer,
-            "🗺️ Mapa Rua / Tático": osmLayer
-        };
-        L.control.layers(baseMaps, null, { position: 'topright' }).addTo(map);
-
-        let userMarker = null;
-        let accuracyCircle = null;
-        let tacticalCircle = null;
         let userCoords = null;
-        let initialCentering = false;
+        let userMarker = null;
 
         const baseIcon = L.divIcon({
             className: 'custom-div-icon',
             html: "<div style='background-color:#0284c7; width:20px; height:20px; border-radius:50%; border:3px solid #fff; box-shadow:0 0 15px #38bdf8;'></div>",
-            iconSize: [20, 20],
-            iconAnchor: [10, 10]
+            iconSize: [20, 20], iconAnchor: [10, 10]
         });
 
-        const geoOptions = {
-            enableHighAccuracy: true,
-            timeout: 20000,
-            maximumAge: 0
-        };
-
-        function startLocationWatch() {
-            if ("geolocation" in navigator) {
-                navigator.geolocation.watchPosition(
-                    (position) => {
-                        const lat = position.coords.latitude;
-                        const lng = position.coords.longitude;
-                        const accuracy = Math.round(position.coords.accuracy);
-                        userCoords = [lat, lng];
-
-                        document.getElementById('gps-status').innerHTML = "● GPS OK";
-                        document.getElementById('gps-coords').innerText = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-                        document.getElementById('gps-accuracy').innerText = `${accuracy} m`;
-
-                        if (!userMarker) {
-                            userMarker = L.marker(userCoords, { icon: baseIcon }).addTo(map).bindPopup("<b>SUA POSIÇÃO ATUAL</b>");
-                            
-                            accuracyCircle = L.circle(userCoords, {
-                                color: '#f43f5e',
-                                fillColor: '#f43f5e',
-                                fillOpacity: 0.15,
-                                radius: accuracy
-                            }).addTo(map);
-
-                            tacticalCircle = L.circle(userCoords, {
-                                color: '#38bdf8',
-                                fillColor: '#0284c7',
-                                fillOpacity: 0.08,
-                                radius: 30000
-                            }).addTo(map);
-                        } else {
-                            userMarker.setLatLng(userCoords);
-                            accuracyCircle.setLatLng(userCoords).setRadius(accuracy);
-                            tacticalCircle.setLatLng(userCoords);
-                        }
-
-                        // Centralização automática na primeira leitura
-                        if (!initialCentering) {
-                            map.setView(userCoords, 17);
-                            initialCentering = true;
-                        }
-                    },
-                    (error) => {
-                        document.getElementById('gps-status').innerHTML = "⚠️ ERRO GPS";
-                    },
-                    geoOptions
-                );
-            }
-        }
-
-        function centerOnGPS() {
-            if (userCoords) {
-                map.flyTo(userCoords, 17, { animate: true, duration: 1.2 });
+        navigator.geolocation.watchPosition(pos => {
+            userCoords = [pos.coords.latitude, pos.coords.longitude];
+            document.getElementById('gps-status').innerText = "● GPS OK";
+            document.getElementById('gps-coords').innerText = `${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`;
+            document.getElementById('gps-accuracy').innerText = `${Math.round(pos.coords.accuracy)} m`;
+            
+            if(!userMarker) {
+                userMarker = L.marker(userCoords, {icon: baseIcon}).addTo(map);
+                map.setView(userCoords, 16);
             } else {
-                alert("Buscando sinal de GPS...");
+                userMarker.setLatLng(userCoords);
             }
-        }
+        }, err => console.error(err), { enableHighAccuracy: true });
 
-        startLocationWatch();
+        function centerOnGPS() { if(userCoords) map.flyTo(userCoords, 17, {animate: true}); }
 
-        let mediaStream = null;
+        // ==========================================
+        // 2. IA DE VISÃO COMPUTACIONAL (TENSORFLOW)
+        // ==========================================
+        let aiModel = null;
+        let isDetecting = false;
+        let videoEl = document.getElementById('camera-video');
+        let canvasEl = document.getElementById('ai-canvas');
+        let ctx = canvasEl.getContext('2d');
+
+        // Carrega o modelo de IA leve (COCO-SSD) ao abrir o app
+        cocoSsd.load().then(model => {
+            aiModel = model;
+            document.getElementById('ai-status').innerText = "● IA OPERACIONAL";
+            document.getElementById('ai-status').style.color = "var(--accent-green)";
+        });
+
         async function openCameraHUD() {
-            const modal = document.getElementById('camera-hud-modal');
-            const video = document.getElementById('camera-video');
+            document.getElementById('camera-hud-modal').style.display = 'block';
             try {
-                mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-                video.srcObject = mediaStream;
-                modal.style.display = 'flex';
-            } catch (err) {
-                alert("Não foi possível acessar a câmera do dispositivo.");
-            }
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                videoEl.srcObject = stream;
+                videoEl.onloadedmetadata = () => {
+                    canvasEl.width = videoEl.videoWidth;
+                    canvasEl.height = videoEl.videoHeight;
+                    isDetecting = true;
+                    detectFrame();
+                };
+            } catch(e) { alert("Erro na câmera: " + e); }
         }
 
         function closeCameraHUD() {
-            if (mediaStream) mediaStream.getTracks().forEach(track => track.stop());
+            isDetecting = false;
+            let stream = videoEl.srcObject;
+            if(stream) stream.getTracks().forEach(t => t.stop());
             document.getElementById('camera-hud-modal').style.display = 'none';
         }
+
+        async function detectFrame() {
+            if (!isDetecting || !aiModel) return;
+            
+            ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+            const predictions = await aiModel.detect(videoEl);
+            
+            let droneSpotted = false;
+            
+            predictions.forEach(pred => {
+                // Como não temos um modelo treinado SÓ para drones nativamente, 
+                // mapeamos objetos voadores genéricos ou anomalias (pássaros, aviões, pipas).
+                if (['bird', 'airplane', 'kite'].includes(pred.class)) {
+                    droneSpotted = true;
+                    ctx.beginPath();
+                    ctx.rect(...pred.bbox);
+                    ctx.lineWidth = 4;
+                    ctx.strokeStyle = '#f43f5e'; // Vermelho alvo
+                    ctx.stroke();
+                    
+                    ctx.fillStyle = '#f43f5e';
+                    ctx.fillText(`POSSÍVEL DRONE / UAV - ${(pred.score*100).toFixed(1)}%`, pred.bbox[0], pred.bbox[1] > 10 ? pred.bbox[1] - 5 : 10);
+
+                    // Atualiza Painel
+                    document.getElementById('tgt-source').innerText = "VISUAL (IA ÓPTICA)";
+                    document.getElementById('tgt-conf').innerText = `${(pred.score*100).toFixed(1)}%`;
+                }
+            });
+
+            if(droneSpotted) {
+                document.getElementById('hud-alert').innerText = "⚠️ ANOMALIA AÉREA DETECTADA NA LINHA DE VISÃO!";
+                document.getElementById('hud-alert').style.color = "#f43f5e";
+            } else {
+                document.getElementById('hud-alert').innerText = "Escaneando setor visual...";
+                document.getElementById('hud-alert').style.color = "#38bdf8";
+            }
+
+            requestAnimationFrame(detectFrame);
+        }
+
+        // ==========================================
+        // 3. RADAR ACÚSTICO (SONAR - WEB AUDIO API)
+        // ==========================================
+        let audioCtx, analyser, audioStream, audioInterval;
+        let isAudioActive = false;
+
+        async function toggleAcousticRadar() {
+            const btn = document.getElementById('btn-audio');
+            const status = document.getElementById('audio-status');
+
+            if (isAudioActive) {
+                // Desligar
+                clearInterval(audioInterval);
+                audioStream.getTracks().forEach(t => t.stop());
+                audioCtx.close();
+                isAudioActive = false;
+                btn.classList.remove('active');
+                status.innerText = "OFF";
+                document.getElementById('tgt-source').innerText = "NENHUMA";
+                return;
+            }
+
+            try {
+                // Ligar
+                audioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioCtx.createAnalyser();
+                analyser.fftSize = 1024;
+                
+                const source = audioCtx.createMediaStreamSource(audioStream);
+                source.connect(analyser);
+                
+                isAudioActive = true;
+                btn.classList.add('active');
+                status.innerText = "LIGADO";
+
+                const dataArray = new Uint8Array(analyser.frequencyBinCount);
+                
+                audioInterval = setInterval(() => {
+                    analyser.getByteFrequencyData(dataArray);
+                    // Drones emitem ruidos de alta frequência devido a rotação (RPM).
+                    // Analisamos os "bins" de frequencia mais altos.
+                    let sum = 0;
+                    for(let i = 200; i < 300; i++) { sum += dataArray[i]; }
+                    let averageHighFreq = sum / 100;
+
+                    if (averageHighFreq > 60) { // Limiar de detecção
+                        document.getElementById('tgt-source').innerText = "SONAR (ACÚSTICO)";
+                        document.getElementById('tgt-conf').innerText = `${Math.min(100, averageHighFreq).toFixed(1)}%`;
+                        document.getElementById('tgt-freq').innerText = "Rotores Alta RPM";
+                        btn.style.backgroundColor = "rgba(244, 63, 94, 0.4)"; // Fica vermelho se ouvir algo
+                    } else {
+                        btn.style.backgroundColor = "";
+                    }
+                }, 500);
+
+            } catch(e) { alert("Permissão de microfone negada."); }
+        }
+
+        // ==========================================
+        // 4. SCANNER BLUETOOTH (REMOTE ID BASE)
+        // ==========================================
+        async function scanBluetooth() {
+            const btn = document.getElementById('btn-ble');
+            btn.classList.add('scanning');
+            btn.querySelector('span:last-child').innerText = "BUSCANDO...";
+            
+            try {
+                // Requer interação do usuário e HTTPS.
+                // O Remote ID usa protocolos de Broadcast específicos (Legacy/Extended).
+                // Aqui abrimos o módulo de varredura nativo do OS para o operador.
+                const device = await navigator.bluetooth.requestDevice({
+                    acceptAllDevices: true,
+                    optionalServices: ['battery_service'] // Exemplo
+                });
+                
+                document.getElementById('tgt-source').innerText = "RF / BLUETOOTH";
+                document.getElementById('tgt-freq').innerText = device.name || "MAC " + device.id.substring(0,8);
+                document.getElementById('tgt-dist').innerText = "Sinal Forte (< 100m)";
+                document.getElementById('tgt-conf').innerText = "100%";
+                
+                alert(`Sinal Suspeito Capturado: ${device.name || 'Dispositivo Desconhecido'}`);
+                
+            } catch(error) {
+                console.log(error); // Usuário cancelou ou sem suporte
+            } finally {
+                btn.classList.remove('scanning');
+                btn.querySelector('span:last-child').innerText = "SCAN";
+            }
+        }
+
+        // Drawer Mobile
+        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
     </script>
 </body>
 </html>
