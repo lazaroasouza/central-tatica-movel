@@ -164,17 +164,26 @@
     <script>
         // Inicializa o mapa tático escuro
         const map = L.map('map', { zoomControl: false }).setView([-17.0822, -40.9352], 14);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+
+        // Camada de Mapa Escuro sem necessidade de chave de API
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
             maxZoom: 19,
             subdomains: 'abcd',
             attribution: '© OpenStreetMap, © CARTO'
+        }).addTo(map);
+
+        // Adiciona nomes de cidades/ruas escuros por cima
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png', {
+            maxZoom: 19,
+            subdomains: 'abcd',
+            pane: 'markerPane'
         }).addTo(map);
 
         // Raio de alcance tático no mapa
         L.circle([-17.0822, -40.9352], {
             color: '#0284c7',
             fillColor: '#0284c7',
-            fillOpacity: 0.1,
+            fillOpacity: 0.15,
             radius: 1500
         }).addTo(map);
 
