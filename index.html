@@ -9,14 +9,14 @@
     <meta name="mobile-web-app-capable" content="yes">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
-    <!-- TENSORFLOW.JS (Inteligência Artificial) -->
+    <!-- TENSORFLOW.JS -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
 
     <style>
         :root {
             --bg-dark: #070a11;
-            --panel-bg: rgba(13, 20, 36, 0.95);
+            --panel-bg: rgba(13, 20, 36, 0.98);
             --border-color: #1e293b;
             --accent-cyan: #38bdf8;
             --accent-red: #f43f5e;
@@ -31,78 +31,93 @@
 
         /* HEADER */
         #header {
-            height: 50px; background: #0b1120; border-bottom: 2px solid #0284c7;
-            display: flex; align-items: center; justify-content: space-between; padding: 0 12px; z-index: 3000;
+            height: 48px; background: #0b1120; border-bottom: 2px solid #0284c7;
+            display: flex; align-items: center; justify-content: space-between; padding: 0 10px; z-index: 3000;
         }
-        .logo { font-weight: 900; font-size: 13px; color: #fff; }
+        .logo { font-weight: 900; font-size: 11px; color: #fff; white-space: nowrap; }
         .logo span { color: var(--accent-cyan); }
-        .status-container { display: flex; gap: 6px; }
-        .status-badge { font-size: 10px; color: var(--accent-green); background: rgba(16,185,129,0.1); padding: 4px 6px; border-radius: 4px; border: 1px solid var(--accent-green); }
+        .status-container { display: flex; gap: 4px; }
+        .status-badge { font-size: 9px; color: var(--accent-green); background: rgba(16,185,129,0.1); padding: 3px 5px; border-radius: 4px; border: 1px solid var(--accent-green); white-space: nowrap; }
 
         /* LAYOUT & MAPA */
-        #wrapper { display: flex; height: calc(100vh - 50px); width: 100vw; position: relative; }
+        #wrapper { display: flex; height: calc(100vh - 48px); width: 100vw; position: relative; }
         #map-container { flex: 1; height: 100%; width: 100%; position: relative; }
         #map { width: 100%; height: 100%; background: #070a11; }
 
-        /* PAINEL TÁTICO */
+        /* BOTOES FLUTUANTES NO MAPA */
+        #panel-toggle-btn {
+            position: absolute; top: 12px; left: 12px; z-index: 2500;
+            background: rgba(11, 17, 32, 0.9); border: 1px solid var(--accent-cyan);
+            color: var(--accent-cyan); padding: 8px 12px; border-radius: 6px;
+            font-size: 10px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+
+        #locate-btn {
+            position: absolute; bottom: 20px; right: 12px; z-index: 2500;
+            background: #0284c7; border: 2px solid #38bdf8; color: white;
+            padding: 10px 14px; border-radius: 30px; font-size: 10px; font-weight: bold;
+            cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+
+        /* PAINEL TÁTICO (SIDEBAR / BOTTOM SHEET) */
         #sidebar {
             width: 340px; background: var(--panel-bg); border-right: 1px solid var(--border-color);
-            display: flex; flex-direction: column; z-index: 2000; padding: 12px; gap: 10px;
-            box-shadow: 5px 0 15px rgba(0,0,0,0.5); transition: transform 0.3s ease-in-out;
-            overflow-y: auto;
+            display: flex; flex-direction: column; z-index: 2800; padding: 12px; gap: 10px;
+            box-shadow: 5px 0 15px rgba(0,0,0,0.5); overflow-y: auto; transition: all 0.3s ease-in-out;
         }
-        .panel-block { background: rgba(30,41,59,0.4); border: 1px solid var(--border-color); border-radius: 6px; padding: 10px; }
-        .panel-title { font-size: 11px; font-weight: bold; color: var(--accent-cyan); margin-bottom: 6px; }
-        .target-data { font-size: 11px; color: var(--text-muted); display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+
+        .panel-block { background: rgba(30,41,59,0.5); border: 1px solid var(--border-color); border-radius: 6px; padding: 8px; }
+        .panel-title { font-size: 10px; font-weight: bold; color: var(--accent-cyan); margin-bottom: 6px; }
+        .target-data { font-size: 10px; color: var(--text-muted); display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
         .target-data span { color: var(--text-main); font-weight: bold; }
 
-        /* BOTOES */
         .btn-sensor { background: #1e293b; border: 1px solid #475569; color: #fff; padding: 8px; font-size: 10px; border-radius: 4px; cursor: pointer; width: 100%; margin-bottom: 5px; text-align: left; display: flex; justify-content: space-between; align-items: center; }
         .btn-sensor.active { background: rgba(16,185,129,0.2); border-color: var(--accent-green); color: var(--accent-green); }
         .btn-sensor.scanning { background: rgba(245,158,11,0.2); border-color: var(--accent-yellow); color: var(--accent-yellow); }
         
-        .btn-tac { background: #0284c7; border: 1px solid #38bdf8; color: #fff; padding: 10px; font-size: 11px; font-weight: bold; border-radius: 4px; cursor: pointer; width: 100%; margin-top: 5px; text-transform: uppercase; }
+        .btn-tac { background: #0284c7; border: 1px solid #38bdf8; color: #fff; padding: 10px; font-size: 10px; font-weight: bold; border-radius: 4px; cursor: pointer; width: 100%; margin-top: 5px; text-transform: uppercase; }
 
-        /* BOTÃO FLUTUANTE MAPA */
-        #locate-btn { position: absolute; bottom: 30px; right: 15px; z-index: 2500; background: #0284c7; border: 2px solid #38bdf8; color: white; padding: 12px; border-radius: 30px; font-size: 11px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-
-        /* RESPONSIVIDADE MOBILE */
-        #toggle-panel-btn { display: none; }
+        /* RESPONSIVIDADE MOBILE STRICT */
         @media (max-width: 768px) {
-            #sidebar { position: absolute; bottom: 0; left: 0; width: 100%; max-height: 75vh; border-top: 2px solid #0284c7; border-radius: 12px 12px 0 0; transform: translateY(calc(100% - 40px)); }
-            #sidebar.open { transform: translateY(0); }
-            #toggle-panel-btn { display: block; background: #0b1120; color: var(--accent-cyan); border: 1px solid var(--border-color); padding: 6px; text-align: center; font-size: 10px; border-radius: 4px; margin-bottom: 4px; }
+            #sidebar {
+                position: absolute; bottom: 0; left: 0; width: 100%; max-height: 80vh;
+                border-right: none; border-top: 2px solid #0284c7; border-radius: 12px 12px 0 0;
+                transform: translateY(100%); visibility: hidden; opacity: 0;
+            }
+            #sidebar.open {
+                transform: translateY(0); visibility: visible; opacity: 1;
+            }
         }
 
         /* MODAL MIRA IA (HUD) */
         #camera-hud-modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; z-index: 5000; display: none; }
         #camera-video { width: 100%; height: 100%; object-fit: cover; position: absolute; }
         #ai-canvas { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 5001; pointer-events: none; }
-        .hud-overlay { position: absolute; top: 20px; left: 20px; z-index: 5002; color: var(--accent-red); font-weight: bold; font-size: 14px; text-shadow: 0 0 5px #000; }
+        .hud-overlay { position: absolute; top: 20px; left: 20px; z-index: 5002; color: var(--accent-red); font-weight: bold; font-size: 12px; text-shadow: 0 0 5px #000; }
         .hud-controls { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 5002; width: 80%; max-width: 300px; }
     </style>
 </head>
 <body>
 
     <div id="header">
-        <div class="logo"><span>[✖] MULTISENSOR</span> C2 TÁTICO</div>
+        <div class="logo"><span>[✖] MULTISENSOR</span> C2</div>
         <div class="status-container">
-            <div class="status-badge" id="ai-status">🧠 IA INICIANDO...</div>
+            <div class="status-badge" id="ai-status">🧠 IA AGUARDANDO</div>
             <div class="status-badge" id="gps-status">● GPS BUSCANDO</div>
         </div>
     </div>
 
     <div id="wrapper">
-        <div id="sidebar">
-            <div id="toggle-panel-btn" onclick="toggleSidebar()">▼ ABRIR / FECHAR PAINEL</div>
+        <button id="panel-toggle-btn" onclick="toggleSidebar()">📊 PAINEL / SENSORES</button>
 
+        <div id="sidebar">
             <div class="panel-block">
-                <div class="panel-title">📡 MÓDULOS DE DETECÇÃO (SENSORES)</div>
+                <div class="panel-title">📡 SENSORES DE AMBIENTE</div>
                 <button class="btn-sensor" id="btn-audio" onclick="toggleAcousticRadar()">
                     <span>🔊 RADAR ACÚSTICO (SONAR)</span> <span id="audio-status">OFF</span>
                 </button>
                 <button class="btn-sensor" id="btn-ble" onclick="scanBluetooth()">
-                    <span>📶 SCANNER BLUETOOTH (REMOTE ID)</span> <span>SCAN</span>
+                    <span>📶 SCANNER RF (REMOTE ID)</span> <span>SCAN</span>
                 </button>
             </div>
 
@@ -112,19 +127,20 @@
                     <div>FONTE: <span id="tgt-source" style="color:var(--accent-red)">NENHUMA</span></div>
                     <div>CONFIANÇA: <span id="tgt-conf">--%</span></div>
                     <div>FREQUÊNCIA/ID: <span id="tgt-freq">--</span></div>
-                    <div>DIST. ESTIMADA: <span id="tgt-dist">-- m</span></div>
+                    <div>DISTANÇIA: <span id="tgt-dist">-- m</span></div>
                 </div>
             </div>
 
             <div class="panel-block">
-                <div class="panel-title">📍 SEU POSICIONAMENTO</div>
+                <div class="panel-title">📍 BASE MÓVEL (GPS)</div>
                 <div class="target-data">
                     <div>COORD: <span id="gps-coords">Buscando...</span></div>
                     <div>PRECISÃO: <span id="gps-accuracy">-- m</span></div>
                 </div>
             </div>
 
-            <button class="btn-tac" style="background:#0284c7;" onclick="openCameraHUD()">📷 ATIVAR MIRA COM INTELIGÊNCIA ARTIFICIAL</button>
+            <button class="btn-tac" onclick="openCameraHUD()">📷 ATIVAR MIRA COM IA</button>
+            <button class="btn-tac" style="background:#475569; border-color:#64748b;" onclick="toggleSidebar()">✖ FECHAR PAINEL</button>
         </div>
 
         <div id="map-container">
@@ -145,9 +161,12 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // ==========================================
-        // 1. MAPA E GPS (MANTIDO E OTIMIZADO)
-        // ==========================================
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('open');
+        }
+
+        // MAPA & GPS
         const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 });
         const map = L.map('map', { zoomControl: false, layers: [satelliteLayer] }).setView([-17.25, -41.00], 15);
         L.control.zoom({ position: 'topright' }).addTo(map);
@@ -177,19 +196,16 @@
 
         function centerOnGPS() { if(userCoords) map.flyTo(userCoords, 17, {animate: true}); }
 
-        // ==========================================
-        // 2. IA DE VISÃO COMPUTACIONAL (TENSORFLOW)
-        // ==========================================
+        // TENSORFLOW IA
         let aiModel = null;
         let isDetecting = false;
         let videoEl = document.getElementById('camera-video');
         let canvasEl = document.getElementById('ai-canvas');
         let ctx = canvasEl.getContext('2d');
 
-        // Carrega o modelo de IA leve (COCO-SSD) ao abrir o app
         cocoSsd.load().then(model => {
             aiModel = model;
-            document.getElementById('ai-status').innerText = "● IA OPERACIONAL";
+            document.getElementById('ai-status').innerText = "● IA PRONTA";
             document.getElementById('ai-status').style.color = "var(--accent-green)";
         });
 
@@ -219,24 +235,19 @@
             
             ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
             const predictions = await aiModel.detect(videoEl);
-            
             let droneSpotted = false;
             
             predictions.forEach(pred => {
-                // Como não temos um modelo treinado SÓ para drones nativamente, 
-                // mapeamos objetos voadores genéricos ou anomalias (pássaros, aviões, pipas).
                 if (['bird', 'airplane', 'kite'].includes(pred.class)) {
                     droneSpotted = true;
                     ctx.beginPath();
                     ctx.rect(...pred.bbox);
                     ctx.lineWidth = 4;
-                    ctx.strokeStyle = '#f43f5e'; // Vermelho alvo
+                    ctx.strokeStyle = '#f43f5e';
                     ctx.stroke();
-                    
                     ctx.fillStyle = '#f43f5e';
                     ctx.fillText(`POSSÍVEL DRONE / UAV - ${(pred.score*100).toFixed(1)}%`, pred.bbox[0], pred.bbox[1] > 10 ? pred.bbox[1] - 5 : 10);
 
-                    // Atualiza Painel
                     document.getElementById('tgt-source').innerText = "VISUAL (IA ÓPTICA)";
                     document.getElementById('tgt-conf').innerText = `${(pred.score*100).toFixed(1)}%`;
                 }
@@ -253,9 +264,7 @@
             requestAnimationFrame(detectFrame);
         }
 
-        // ==========================================
-        // 3. RADAR ACÚSTICO (SONAR - WEB AUDIO API)
-        // ==========================================
+        // SONAR ACÚSTICO
         let audioCtx, analyser, audioStream, audioInterval;
         let isAudioActive = false;
 
@@ -264,10 +273,9 @@
             const status = document.getElementById('audio-status');
 
             if (isAudioActive) {
-                // Desligar
                 clearInterval(audioInterval);
-                audioStream.getTracks().forEach(t => t.stop());
-                audioCtx.close();
+                if(audioStream) audioStream.getTracks().forEach(t => t.stop());
+                if(audioCtx) audioCtx.close();
                 isAudioActive = false;
                 btn.classList.remove('active');
                 status.innerText = "OFF";
@@ -276,7 +284,6 @@
             }
 
             try {
-                // Ligar
                 audioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 analyser = audioCtx.createAnalyser();
@@ -293,17 +300,15 @@
                 
                 audioInterval = setInterval(() => {
                     analyser.getByteFrequencyData(dataArray);
-                    // Drones emitem ruidos de alta frequência devido a rotação (RPM).
-                    // Analisamos os "bins" de frequencia mais altos.
                     let sum = 0;
                     for(let i = 200; i < 300; i++) { sum += dataArray[i]; }
                     let averageHighFreq = sum / 100;
 
-                    if (averageHighFreq > 60) { // Limiar de detecção
+                    if (averageHighFreq > 60) {
                         document.getElementById('tgt-source').innerText = "SONAR (ACÚSTICO)";
                         document.getElementById('tgt-conf').innerText = `${Math.min(100, averageHighFreq).toFixed(1)}%`;
                         document.getElementById('tgt-freq').innerText = "Rotores Alta RPM";
-                        btn.style.backgroundColor = "rgba(244, 63, 94, 0.4)"; // Fica vermelho se ouvir algo
+                        btn.style.backgroundColor = "rgba(244, 63, 94, 0.4)";
                     } else {
                         btn.style.backgroundColor = "";
                     }
@@ -312,21 +317,16 @@
             } catch(e) { alert("Permissão de microfone negada."); }
         }
 
-        // ==========================================
-        // 4. SCANNER BLUETOOTH (REMOTE ID BASE)
-        // ==========================================
+        // SCANNER BLUETOOTH
         async function scanBluetooth() {
             const btn = document.getElementById('btn-ble');
             btn.classList.add('scanning');
             btn.querySelector('span:last-child').innerText = "BUSCANDO...";
             
             try {
-                // Requer interação do usuário e HTTPS.
-                // O Remote ID usa protocolos de Broadcast específicos (Legacy/Extended).
-                // Aqui abrimos o módulo de varredura nativo do OS para o operador.
                 const device = await navigator.bluetooth.requestDevice({
                     acceptAllDevices: true,
-                    optionalServices: ['battery_service'] // Exemplo
+                    optionalServices: ['battery_service']
                 });
                 
                 document.getElementById('tgt-source').innerText = "RF / BLUETOOTH";
@@ -334,18 +334,15 @@
                 document.getElementById('tgt-dist').innerText = "Sinal Forte (< 100m)";
                 document.getElementById('tgt-conf').innerText = "100%";
                 
-                alert(`Sinal Suspeito Capturado: ${device.name || 'Dispositivo Desconhecido'}`);
+                alert(`Sinal Capturado: ${device.name || 'Dispositivo Desconhecido'}`);
                 
             } catch(error) {
-                console.log(error); // Usuário cancelou ou sem suporte
+                console.log(error);
             } finally {
                 btn.classList.remove('scanning');
                 btn.querySelector('span:last-child').innerText = "SCAN";
             }
         }
-
-        // Drawer Mobile
-        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
     </script>
 </body>
 </html>
