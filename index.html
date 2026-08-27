@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>DedroneTracker.AI - Central de Comando Tático Móvel</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * { box-sizing: border-box; }
+        body, html { margin: 0; padding: 0; height: 100vh; width: 100vw; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #e2e8f0; color: #1e293b; overflow: hidden; }
+        
+        #header { height: 50px; background: #1e293b; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; border-bottom: 2px solid #0f172a; width: 100vw; z-index: 2000; position: relative; }
+        .logo-area { display: flex; align-items: center; gap: 10px; color: #fff; font-weight: bold; font-size: 15px; }
+        .logo-area span { color: #38bdf8; }
+        
+        .alert-btn { background: #ef4444; color: #fff; border: none; padding: 6px 20px; font-weight: bold; border-radius: 4px; cursor: pointer; font-size: 13px; letter-spacing: 1px; box-shadow: 0 0 10px rgba(239, 68, 68, 0.5); }
+        .alert-btn:hover { background: #dc2626; }
+        
+        .nav-menu { display: flex; align-items: center; gap: 18px; font-size: 12px; font-weight: 600; color: #94a3b8; }
+        .nav-menu a { color: #cbd5e1; text-decoration: none; cursor: pointer; padding: 4px 8px; border-radius: 3px; transition: 0.2s; }
+        .nav-menu a:hover, .nav-menu a.active { color: #38bdf8; background: rgba(56, 189, 248, 0.1); }
+
+        #wrapper { display: flex; flex-direction: row; height: calc(100vh - 50px); width: 100vw; overflow: hidden; }
+        
+        #left-sidebar { width: 340px; min-width: 340px; background: #f8fafc; border-right: 1px solid #cbd5e1; display: flex; flex-direction: column; z-index: 1000; height: 100%; }
+        
+        .monitoring-header { background: #f1f5f9; padding: 8px 12px; font-size: 11px; font-weight: bold; color: #0284c7; border-bottom: 1px solid #cbd5e1; display: flex; justify-content: space-between; }
+        
+        .tabs-container { display: flex; background: #e2e8f0; border-bottom: 1px solid #cbd5e1; }
+        .tab { flex: 1; padding: 8px; text-align: center; font-size: 12px; font-weight: bold; cursor: pointer; color: #64748b; background: #e2e8f0; }
+        .tab.active { background: #f8fafc; color: #0f172a; border-bottom: 2px solid #0284c7; }
+
+        .alert-summary { background: #fef2f2; color: #b91c1c; padding: 6px 12px; font-size: 11px; font-weight: bold; border-bottom: 1px solid #fecaca; }
+
+        .target-list { max-height: 160px; overflow-y: auto; background: #fff; border-bottom: 1px solid #cbd5e1; }
+        .target-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; font-size: 11px; border-bottom: 1px solid #f1f5f9; cursor: pointer; }
+        .target-row:hover { background: #f1f5f9; }
+        .target-row.selected { background: #e0f2fe; border-left: 4px solid #0284c7; }
+
+        .target-details { padding: 12px; background: #f8fafc; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+        .details-title { font-size: 12px; font-weight: bold; color: #334155; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; }
+        .grid-info { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 11px; color: #475569; }
+        .grid-info b { color: #0f172a; }
+
+        .action-buttons { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+        .action-btn { background: #fff; border: 1px solid #cbd5e1; padding: 4px 8px; font-size: 10px; font-weight: bold; border-radius: 3px; cursor: pointer; color: #334155; }
+        .action-btn:hover { background: #f1f5f9; border-color: #94a3b8; }
+
+        .live-preview-box { height: 130px; background: #0f172a; border-radius: 4px; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 11px; }
+        .live-label { position: absolute; top: 6px; left: 6px; background: rgba(0,0,0,0.6); color: #fff; padding: 2px 6px; font-size: 9px; font-weight: bold; border-radius: 2px; }
+
+        #map-section { flex: 1; display: flex; flex-direction: column; position: relative; height: 100%; }
+        #map { flex: 1; width: 100%; height: 100%; background: #e2e8f0; z-index: 1; }
+
+        .bottom-bar { height: 35px; background: #1e293b; color: #cbd5e1; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; font-size: 11px; border-top: 1px solid #0f172a; z-index: 10; }
+        .legend-group { display: flex; align-items: center; gap: 15px; }
+        .legend-item { display: flex; align-items: center; gap: 5px; }
+        .dot { width: 8px; height: 8px; border-radius: 50%; }
+        .dot.red { background: #ef4444; }
+        .dot.yellow { background: #eab308; }
+        .dot.green { background: #22c55e; }
+        .dot.gray { background: #94a3b8; }
+
+        .radar-node { background: #0284c7; border: 2px solid #fff; width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 10px rgba(2, 132, 199, 0.8); }
+        .map-badge { background: #fff; border: 1px solid #cbd5e1; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.15); white-space: nowrap; }
+        .map-badge.drone { border-color: #eab308; color: #854d0e; background: #fefce8; }
+        .map-badge.pilot { border-color: #0284c7; color: #0369a1; background: #f0f9ff; }
+    </style>
+</head>
+<body>
+
+    <div id="header">
+        <div class="logo-area">
+            <span>[✖]</span> DedroneTracker.AI <span style="font-size:10px; color:#94a3b8; font-weight:normal;">| Mobile Tactical Command</span>
+        </div>
+        <button class="alert-btn" onclick="triggerAlert()">ALERT</button>
+        <div class="nav-menu">
+            <a class="active">HOME</a>
+            <a>PTZ</a>
+            <a>ALERTS</a>
+            <a>REPORTS</a>
+            <a>OPTIONS</a>
+            <a>HELP</a>
+            <a>ADMIN 👤</a>
+            <span style="color:#f59e0b;">🔔 GPS Ativo</span>
+        </div>
+    </div>
+
+    <div id="wrapper">
+        <div id="left-sidebar">
+            <div class="monitoring-header">
+                <span>▼ MONITORING (MÓVEL)</span>
+                <span id="system-time">--:--:--</span>
+            </div>
+            
+            <div class="tabs-container">
+                <div class="tab active">Verified</div>
+                <div class="tab">Unverified</div>
+            </div>
+
+            <div class="alert-summary">
+                Alert: <span id="alert-count">0</span> Active Threats
+            </div>
+
+            <div class="target-list" id="target-list"></div>
+
+            <div class="target-details">
+                <div class="details-title" id="detail-header">DETAILS TARGET: --</div>
+                <div class="grid-info" id="detail-grid">
+                    <div>ID: <b id="d-id">--</b></div>
+                    <div>Model: <b id="d-model">--</b></div>
+                    <div>Location: <b id="d-loc">--</b></div>
+                    <div>Altitude: <b id="d-alt">-- m</b></div>
+                    <div>Speed: <b id="d-spd">-- m/s</b></div>
+                    <div>Heading: <b id="d-hdg">--°</b></div>
+                </div>
+                
+                <div style="font-size: 11px; font-weight: bold; color: #334155; margin-top: 4px;">Actions</div>
+                <div class="action-buttons">
+                    <button class="action-btn">Friend</button>
+                    <button class="action-btn">Foe</button>
+                    <button class="action-btn">More</button>
+                    <button class="action-btn">PTZ</button>
+                    <button class="action-btn">Verify</button>
+                    <button class="action-btn">Non-priority</button>
+                </div>
+
+                <div style="font-size: 11px; font-weight: bold; color: #334155; margin-top: 4px;">Live view / PTZ</div>
+                <div class="live-preview-box">
+                    <div class="live-label">PTZ CAM-01</div>
+                    <div style="text-align: center; color: #94a3b8; padding: 10px;">
+                        <i>📷 Câmera óptica móvel<br><span id="ptz-status" style="color:#38bdf8;">Aguardando seleção</span></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="map-section">
+            <div id="map"></div>
+            
+            <div class="bottom-bar">
+                <div class="legend-group">
+                    <span style="font-weight:bold;">Base GPS:</span>
+                    <span id="gps-coords" style="color: #38bdf8;">Obtendo localização atual...</span>
+                </div>
+                <div id="clock-display" style="font-weight: bold; color: #38bdf8;">--:--:--</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script>
+        let map = null;
+        let markers = {};
+        let targetsData = {};
+        let polylines = {};
+        let selectedTargetId = null;
+        let baseMarker = null;
+        let radarCircles = [];
+
+        // Inicializa o mapa com coordenadas padrão provisórias
+        map = L.map('map').setView([-17.0822, -40.9352], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { 
+            maxZoom: 19, attribution: '&copy; OpenStreetMap' 
+        }).addTo(map);
+
+        const socket = io();
+
+        // CAPTURA A GEOLOCALIZAÇÃO REAL DO NAVEGADOR (ONDE QUER QUE VOCÊ ESTEJA)
+        if ("geolocation" in navigator) {
+            navigator.geolocation.getCurrentPosition((position) => {
+                const userLat = position.coords.latitude;
+                const userLng = position.coords.longitude;
+
+                document.getElementById('gps-coords').innerText = `Lat: ${userLat.toFixed(4)}, Lng: ${userLng.toFixed(4)}`;
+                
+                // Centraliza o mapa na sua posição atual real
+                map.setView([userLat, userLng], 14);
+
+                // Desenha a base móvel e os círculos de radar no local exato
+                updateBaseOnMap(userLat, userLng);
+
+                // Informa o servidor backend sobre a nova posição da base para puxar aviões locais
+                fetch('/api/update-base', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ lat: userLat, lng: userLng })
+                });
+
+            }, (error) => {
+                console.warn("Geolocalização negada ou indisponível. Usando padrão.");
+                updateBaseOnMap(-17.0822, -40.9352);
+            }, { enableHighAccuracy: true });
+        }
+
+        function updateBaseOnMap(lat, lng) {
+            if (baseMarker) map.removeLayer(baseMarker);
+            radarCircles.forEach(c => map.removeLayer(c));
+            radarCircles = [];
+
+            const sensorIcon = L.divIcon({ html: `<div class="radar-node" title="Sua Base Móvel"></div>`, className: '', iconSize: [12, 12], iconAnchor: [6, 6] });
+            baseMarker = L.marker([lat, lng], { icon: sensorIcon }).addTo(map);
+
+            radarCircles.push(L.circle([lat, lng], { color: '#0284c7', fillColor: '#38bdf8', fillOpacity: 0.05, radius: 2000, weight: 1 }).addTo(map));
+            radarCircles.push(L.circle([lat, lng], { color: '#0284c7', fillColor: '#38bdf8', fillOpacity: 0.02, radius: 5000, weight: 1, dashArray: '5, 5' }).addTo(map));
+        }
+
+        socket.on('target-update', (data) => {
+            targetsData[data.id] = data;
+            renderTargetList();
+            renderMapMarker(data);
+            
+            if (selectedTargetId === data.id) {
+                updateDetailsPanel(data);
+            }
+        });
+
+        function renderTargetList() {
+            const listEl = document.getElementById('target-list');
+            const keys = Object.keys(targetsData);
+            document.getElementById('alert-count').innerText = keys.length;
+
+            if (keys.length === 0) {
+                listEl.innerHTML = `<div style="padding: 15px; text-align:center; color:#94a3b8; font-size:11px;">Varrendo espaço aéreo na sua região...</div>`;
+                return;
+            }
+
+            listEl.innerHTML = '';
+            keys.forEach(id => {
+                const item = targetsData[id];
+                const row = document.createElement('div');
+                row.className = `target-row ${selectedTargetId === id ? 'selected' : ''}`;
+                
+                let iconSymbol = item.type === 'REMOTE_CONTROL' ? '🕹️' : (item.type === 'AVIAO_COMERCIAL' ? '✈️' : '🛸');
+                
+                row.innerHTML = `
+                    <div><b>${iconSymbol} ${item.id}</b> <span style="color:#64748b;">(${item.type})</span></div>
+                    <div style="color:#64748b;">${item.timestamp}</div>
+                `;
+                
+                row.onclick = () => {
+                    selectedTargetId = id;
+                    map.flyTo([item.lat, item.lng], 15);
+                    updateDetailsPanel(item);
+                    renderTargetList();
+                };
+                listEl.appendChild(row);
+            });
+        }
+
+        function updateDetailsPanel(item) {
+            document.getElementById('detail-header').innerText = `DETAILS TARGET: ${item.id}`;
+            document.getElementById('d-id').innerText = item.id;
+            document.getElementById('d-model').innerText = item.type;
+            document.getElementById('d-loc').innerText = `${item.lat.toFixed(4)}, ${item.lng.toFixed(4)}`;
+            document.getElementById('d-alt').innerText = `${item.altitude} m`;
+            document.getElementById('d-spd').innerText = `${item.speed} m/s`;
+            document.getElementById('d-hdg').innerText = `${item.heading}°`;
+            document.getElementById('ptz-status').innerText = `Focado no alvo: ${item.id}`;
+        }
+
+        function renderMapMarker(item) {
+            let badgeClass = item.type === 'REMOTE_CONTROL' ? 'pilot' : 'drone';
+            let iconSymbol = item.type === 'REMOTE_CONTROL' ? '🕹️ Pilot' : (item.type === 'AVIAO_COMERCIAL' ? '✈️ Avião' : '🛸 Drone');
+            
+            const htmlLabel = `<div class="map-badge ${badgeClass}">${iconSymbol}<br>ID: ${item.id} | Alt: ${item.altitude}m</div>`;
+            const customIcon = L.divIcon({ html: htmlLabel, className: '', iconSize: [110, 35], iconAnchor: [55, 17] });
+
+            if (markers[item.id]) {
+                markers[item.id].setLatLng([item.lat, item.lng]);
+                markers[item.id].setIcon(customIcon);
+            } else {
+                markers[item.id] = L.marker([item.lat, item.lng], { icon: customIcon }).addTo(map);
+            }
+        }
+
+        function triggerAlert() {
+            alert("⚠️ ALERTA GERAL ATIVADO! Perímetro sob vigilância móvel.");
+        }
+
+        setInterval(() => {
+            const now = new Date().toLocaleTimeString();
+            document.getElementById('system-time').innerText = now;
+            document.getElementById('clock-display').innerText = now;
+        }, 1000);
+    </script>
+</body>
+</html>
