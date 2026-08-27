@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>DedroneTracker.AI - C2 Multisensor</title>
     
     <meta name="theme-color" content="#0b1120">
@@ -16,7 +16,7 @@
     <style>
         :root {
             --bg-dark: #070a11;
-            --panel-bg: rgba(13, 20, 36, 0.98);
+            --panel-bg: rgba(11, 17, 32, 0.98);
             --border-color: #1e293b;
             --accent-cyan: #38bdf8;
             --accent-red: #f43f5e;
@@ -27,43 +27,30 @@
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
-        body, html { height: 100vh; width: 100vw; font-family: 'Segoe UI', monospace; background: var(--bg-dark); color: var(--text-main); overflow: hidden; }
+        html, body { height: 100%; width: 100%; font-family: 'Segoe UI', monospace; background: var(--bg-dark); color: var(--text-main); overflow: hidden; position: fixed; }
 
-        /* HEADER */
+        /* HEADER FIXO */
         #header {
-            height: 48px; background: #0b1120; border-bottom: 2px solid #0284c7;
-            display: flex; align-items: center; justify-content: space-between; padding: 0 10px; z-index: 3000;
+            height: 48px; width: 100%; background: #0b1120; border-bottom: 2px solid #0284c7;
+            display: flex; align-items: center; justify-content: space-between; padding: 0 10px;
+            position: absolute; top: 0; left: 0; z-index: 4000;
         }
         .logo { font-weight: 900; font-size: 11px; color: #fff; white-space: nowrap; }
         .logo span { color: var(--accent-cyan); }
         .status-container { display: flex; gap: 4px; }
-        .status-badge { font-size: 9px; color: var(--accent-green); background: rgba(16,185,129,0.1); padding: 3px 5px; border-radius: 4px; border: 1px solid var(--accent-green); white-space: nowrap; }
+        .status-badge { font-size: 9px; color: var(--accent-green); background: rgba(16,185,129,0.1); padding: 3px 6px; border-radius: 4px; border: 1px solid var(--accent-green); white-space: nowrap; }
 
-        /* LAYOUT & MAPA */
-        #wrapper { display: flex; height: calc(100vh - 48px); width: 100vw; position: relative; }
-        #map-container { flex: 1; height: 100%; width: 100%; position: relative; }
-        #map { width: 100%; height: 100%; background: #070a11; }
+        /* APP CONTAINER */
+        #app-container { position: absolute; top: 48px; bottom: 0; left: 0; right: 0; display: flex; width: 100%; overflow: hidden; }
 
-        /* BOTOES FLUTUANTES NO MAPA */
-        #panel-toggle-btn {
-            position: absolute; top: 12px; left: 12px; z-index: 2500;
-            background: rgba(11, 17, 32, 0.9); border: 1px solid var(--accent-cyan);
-            color: var(--accent-cyan); padding: 8px 12px; border-radius: 6px;
-            font-size: 10px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-        }
+        /* MAPA */
+        #map { width: 100%; height: 100%; background: #070a11; z-index: 1000; }
 
-        #locate-btn {
-            position: absolute; bottom: 20px; right: 12px; z-index: 2500;
-            background: #0284c7; border: 2px solid #38bdf8; color: white;
-            padding: 10px 14px; border-radius: 30px; font-size: 10px; font-weight: bold;
-            cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-        }
-
-        /* PAINEL TÁTICO (SIDEBAR / BOTTOM SHEET) */
+        /* PAINEL TÁTICO */
         #sidebar {
-            width: 340px; background: var(--panel-bg); border-right: 1px solid var(--border-color);
-            display: flex; flex-direction: column; z-index: 2800; padding: 12px; gap: 10px;
-            box-shadow: 5px 0 15px rgba(0,0,0,0.5); overflow-y: auto; transition: all 0.3s ease-in-out;
+            width: 320px; height: 100%; background: var(--panel-bg); border-right: 1px solid var(--border-color);
+            display: flex; flex-direction: column; z-index: 3000; padding: 12px; gap: 10px;
+            overflow-y: auto; transition: transform 0.3s ease-in-out;
         }
 
         .panel-block { background: rgba(30,41,59,0.5); border: 1px solid var(--border-color); border-radius: 6px; padding: 8px; }
@@ -77,19 +64,32 @@
         
         .btn-tac { background: #0284c7; border: 1px solid #38bdf8; color: #fff; padding: 10px; font-size: 10px; font-weight: bold; border-radius: 4px; cursor: pointer; width: 100%; margin-top: 5px; text-transform: uppercase; }
 
-        /* RESPONSIVIDADE MOBILE STRICT */
-        @media (max-width: 768px) {
-            #sidebar {
-                position: absolute; bottom: 0; left: 0; width: 100%; max-height: 80vh;
-                border-right: none; border-top: 2px solid #0284c7; border-radius: 12px 12px 0 0;
-                transform: translateY(100%); visibility: hidden; opacity: 0;
-            }
-            #sidebar.open {
-                transform: translateY(0); visibility: visible; opacity: 1;
-            }
+        /* BOTÕES FLUTUANTES NO MAPA */
+        #panel-toggle-btn {
+            position: absolute; top: 12px; left: 12px; z-index: 2000;
+            background: rgba(11, 17, 32, 0.95); border: 1px solid var(--accent-cyan);
+            color: var(--accent-cyan); padding: 8px 12px; border-radius: 6px;
+            font-size: 10px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
         }
 
-        /* MODAL MIRA IA (HUD) */
+        #locate-btn {
+            position: absolute; bottom: 20px; right: 12px; z-index: 2000;
+            background: #0284c7; border: 2px solid #38bdf8; color: white;
+            padding: 10px 14px; border-radius: 30px; font-size: 10px; font-weight: bold;
+            cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+
+        /* REGRAS ESPECÍFICAS PARA MOBILE */
+        @media (max-width: 768px) {
+            #sidebar {
+                position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+                transform: translateY(100%); transition: transform 0.3s ease-in-out;
+                padding-bottom: env(safe-area-inset-bottom, 20px);
+            }
+            #sidebar.open { transform: translateY(0); }
+        }
+
+        /* MODAL HUD IA */
         #camera-hud-modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; z-index: 5000; display: none; }
         #camera-video { width: 100%; height: 100%; object-fit: cover; position: absolute; }
         #ai-canvas { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 5001; pointer-events: none; }
@@ -107,7 +107,7 @@
         </div>
     </div>
 
-    <div id="wrapper">
+    <div id="app-container">
         <button id="panel-toggle-btn" onclick="toggleSidebar()">📊 PAINEL / SENSORES</button>
 
         <div id="sidebar">
@@ -127,7 +127,7 @@
                     <div>FONTE: <span id="tgt-source" style="color:var(--accent-red)">NENHUMA</span></div>
                     <div>CONFIANÇA: <span id="tgt-conf">--%</span></div>
                     <div>FREQUÊNCIA/ID: <span id="tgt-freq">--</span></div>
-                    <div>DISTANÇIA: <span id="tgt-dist">-- m</span></div>
+                    <div>DISTÂNCIA: <span id="tgt-dist">-- m</span></div>
                 </div>
             </div>
 
@@ -140,13 +140,11 @@
             </div>
 
             <button class="btn-tac" onclick="openCameraHUD()">📷 ATIVAR MIRA COM IA</button>
-            <button class="btn-tac" style="background:#475569; border-color:#64748b;" onclick="toggleSidebar()">✖ FECHAR PAINEL</button>
+            <button class="btn-tac" style="background:#475569; border-color:#64748b;" onclick="toggleSidebar()">✖ VOLTAR AO MAPA</button>
         </div>
 
-        <div id="map-container">
-            <button id="locate-btn" onclick="centerOnGPS()">🎯 CENTRALIZAR</button>
-            <div id="map"></div>
-        </div>
+        <button id="locate-btn" onclick="centerOnGPS()">🎯 CENTRALIZAR</button>
+        <div id="map"></div>
     </div>
 
     <!-- HUD COM IA -->
@@ -162,8 +160,7 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            sidebar.classList.toggle('open');
+            document.getElementById('sidebar').classList.toggle('open');
         }
 
         // MAPA & GPS
