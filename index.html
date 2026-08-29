@@ -34,7 +34,6 @@
         * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-tap-highlight-color: transparent; }
         html, body { height: 100%; width: 100%; font-family: var(--font-ui); background: var(--bg-base); color: var(--text-main); overflow: hidden; position: fixed; }
 
-        /* HEADER TECNOLÓGICO */
         #header {
             position: absolute; top: env(safe-area-inset-top, 10px); left: 10px; right: 10px; z-index: 4000;
             background: var(--glass-bg); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
@@ -42,6 +41,7 @@
             display: flex; align-items: center; justify-content: space-between; padding: 10px 15px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.5);
         }
+        
         .logo { font-family: var(--font-mono); font-size: 14px; color: #fff; letter-spacing: 1px; display: flex; align-items: center; gap: 8px; }
         .logo-icon { width: 12px; height: 12px; background: var(--cyan); border-radius: 50%; box-shadow: 0 0 10px var(--cyan); animation: pulse 2s infinite; }
         
@@ -51,18 +51,15 @@
         .status-badge { font-family: var(--font-mono); font-size: 10px; display: flex; align-items: center; gap: 4px; color: var(--text-muted); }
         .status-badge.ready { color: var(--green); }
 
-        /* MAPA BASE */
         #app-container { position: absolute; top: 0; bottom: 0; left: 0; right: 0; display: flex; width: 100%; overflow: hidden; }
         #map { width: 100%; height: 100%; background: #030712; z-index: 1000; }
         
-        /* FILTRO DE GRID NO MAPA PARA ESTILO TÁTICO */
         #map::after {
             content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1500; pointer-events: none;
             background-image: linear-gradient(rgba(56, 189, 248, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(56, 189, 248, 0.05) 1px, transparent 1px);
             background-size: 40px 40px;
         }
 
-        /* PAINEL LATERAL FLUTUANTE */
         #sidebar {
             position: absolute; top: calc(60px + env(safe-area-inset-top, 0px)); left: 10px; bottom: max(20px, env(safe-area-inset-bottom, 20px));
             width: 340px; background: var(--glass-bg); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
@@ -72,7 +69,6 @@
             transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
 
-        /* WIDGETS DO PAINEL */
         .widget {
             background: rgba(3, 7, 18, 0.5); border: 1px solid rgba(255,255,255,0.05);
             border-radius: 12px; padding: 12px; position: relative; overflow: hidden;
@@ -87,7 +83,6 @@
         .data-val { font-size: 14px; font-weight: 700; color: #fff; font-family: var(--font-mono); }
         .data-val.alert { color: var(--red); text-shadow: 0 0 8px rgba(244, 63, 94, 0.5); }
 
-        /* BOTÕES CYBERPUNK */
         .btn-cyber {
             background: linear-gradient(90deg, rgba(15,23,42,0.8), rgba(30,41,59,0.8)); border: 1px solid var(--glass-border);
             color: #fff; padding: 12px 15px; font-family: var(--font-mono); font-size: 12px; text-transform: uppercase;
@@ -101,4 +96,253 @@
         .btn-cyber.active .indicator { color: var(--cyan); text-shadow: 0 0 8px var(--cyan); }
         .indicator { color: var(--text-muted); font-weight: bold; }
 
-        .btn-action { background: var(--cyan); color: #000; border: none; font-weight: 900; box-shadow: 0 0 15px var
+        .btn-action { background: var(--cyan); color: #000; border: none; font-weight: 900; box-shadow: 0 0 15px var(--cyan-glow); margin-top: 5px; }
+        .btn-action:active { transform: scale(0.97); }
+
+        .map-controls { position: absolute; bottom: max(20px, env(safe-area-inset-bottom, 20px)); right: 15px; z-index: 2000; display: flex; flex-direction: column; gap: 10px; }
+        .btn-fab { width: 44px; height: 44px; border-radius: 50%; background: var(--glass-bg); backdrop-filter: blur(10px); border: 1px solid var(--glass-border); color: var(--cyan); display: flex; align-items: center; justify-content: center; font-size: 18px; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.5); transition: 0.3s; }
+        .btn-fab:active { transform: scale(0.9); background: var(--cyan); color: #000; }
+        
+        #btn-toggle-menu { display: none; position: absolute; top: calc(60px + env(safe-area-inset-top, 0px)); left: 10px; z-index: 2500; border-radius: 8px; width: auto; padding: 10px 15px; font-family: var(--font-mono); font-size: 12px; }
+
+        @media (max-width: 768px) {
+            #btn-toggle-menu { display: flex; }
+            #sidebar {
+                top: auto; bottom: 0; left: 0; width: 100%; height: 75vh;
+                border-radius: 24px 24px 0 0; padding-bottom: max(20px, env(safe-area-inset-bottom, 20px));
+                transform: translateY(110%);
+            }
+            #sidebar.open { transform: translateY(0); }
+            .map-controls { bottom: max(90px, env(safe-area-inset-bottom, 90px)); }
+        }
+
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(56, 189, 248, 0); } 100% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0); } }
+        
+        #camera-hud-modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; z-index: 9000; display: none; }
+        #camera-video { width: 100%; height: 100%; object-fit: cover; position: absolute; }
+        .hud-scanline { position: absolute; width: 100%; height: 4px; background: rgba(56, 189, 248, 0.5); box-shadow: 0 0 15px var(--cyan); z-index: 9001; animation: scan 3s linear infinite; opacity: 0.6; pointer-events: none; }
+        @keyframes scan { 0% { top: 0; } 100% { top: 100%; } }
+        #ai-canvas { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 9002; pointer-events: none; }
+        
+        .hud-overlay-ui { position: absolute; top: env(safe-area-inset-top, 20px); left: 20px; right: 20px; z-index: 9003; display: flex; justify-content: space-between; pointer-events: none; }
+        .hud-target-box { background: rgba(0,0,0,0.5); border: 1px solid var(--cyan); padding: 8px 15px; border-radius: 4px; font-family: var(--font-mono); color: var(--cyan); text-shadow: 0 0 5px var(--cyan); }
+        
+        .hud-footer { position: absolute; bottom: max(20px, env(safe-area-inset-bottom, 20px)); left: 20px; right: 20px; z-index: 9004; display: flex; gap: 15px; }
+        .btn-hud-action { flex: 1; padding: 15px; border-radius: 8px; font-family: var(--font-ui); font-weight: 700; font-size: 14px; text-transform: uppercase; border: none; cursor: pointer; backdrop-filter: blur(5px); }
+        .btn-close-cam { background: rgba(244, 63, 94, 0.2); border: 1px solid var(--red); color: var(--red); }
+    </style>
+</head>
+<body>
+
+    <div id="header">
+        <div class="logo">
+            <div class="logo-icon"></div>
+            NEXUS // C2 TÁTICO
+        </div>
+        <div class="status-container">
+            <div class="status-badge" id="ai-status">
+                <div class="status-dot" id="ai-dot"></div> AI WAIT
+            </div>
+            <div class="status-badge" id="gps-status">
+                <div class="status-dot" id="gps-dot"></div> LOC WAIT
+            </div>
+        </div>
+    </div>
+
+    <div id="app-container">
+        <button class="btn-fab" id="btn-toggle-menu" onclick="toggleSidebar()">☰</button>
+
+        <div id="sidebar">
+            <div class="widget">
+                <div class="widget-header">MÓDULOS DE SENSORES</div>
+                <button class="btn-cyber" id="btn-adsb" onclick="toggleADSB()">
+                    RADAR ADS-B (TRÁFEGO) <span class="indicator" id="adsb-ind">OFF</span>
+                </button>
+                <button class="btn-cyber" id="btn-audio" onclick="toggleAcousticRadar()" style="margin-top: 8px;">
+                    RADAR ACÚSTICO (SONAR) <span class="indicator" id="audio-ind">OFF</span>
+                </button>
+                <button class="btn-cyber" id="btn-voice" onclick="toggleVoiceAlerts()" style="margin-top: 8px;">
+                    SISTEMA DE VOZ / PUSH <span class="indicator" id="voice-ind">OFF</span>
+                </button>
+            </div>
+
+            <div class="widget widget-alert">
+                <div class="widget-header" style="color: var(--red);">AMEAÇA DETECTADA</div>
+                <div class="data-grid">
+                    <div>
+                        <div class="data-label">FONTE / SENSOR</div>
+                        <div class="data-val alert" id="tgt-source">NENHUMA</div>
+                    </div>
+                    <div>
+                        <div class="data-label">CONFIANÇA</div>
+                        <div class="data-val alert" id="tgt-conf">--%</div>
+                    </div>
+                    <div>
+                        <div class="data-label">ASSINATURA</div>
+                        <div class="data-val" id="tgt-freq">--</div>
+                    </div>
+                    <div>
+                        <div class="data-label">DISTÂNCIA/ALT</div>
+                        <div class="data-val" id="tgt-dist">--</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="widget">
+                <div class="widget-header">TELEMETRIA LOCAL</div>
+                <div class="data-grid">
+                    <div>
+                        <div class="data-label">COORDENADAS</div>
+                        <div class="data-val" id="gps-coords">Buscando...</div>
+                    </div>
+                    <div>
+                        <div class="data-label">PRECISÃO (GNSS)</div>
+                        <div class="data-val" id="gps-accuracy">-- m</div>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn-cyber btn-action" onclick="openCameraHUD()">[ ATIVAR MIRA ÓPTICA IA ]</button>
+        </div>
+
+        <div class="map-controls">
+            <button class="btn-fab" onclick="centerOnGPS()" title="Centralizar GPS">🎯</button>
+        </div>
+
+        <div id="map"></div>
+    </div>
+
+    <div id="camera-hud-modal">
+        <video id="camera-video" autoplay playsinline muted></video>
+        <div class="hud-scanline"></div>
+        <canvas id="ai-canvas"></canvas>
+        
+        <div class="hud-overlay-ui">
+            <div class="hud-target-box" id="hud-alert">MODO BUSCA ATIVO...</div>
+            <div class="hud-target-box" id="hud-compass" style="color:var(--green); border-color:var(--green);">0° N</div>
+        </div>
+
+        <div class="hud-footer">
+            <button class="btn-hud-action btn-close-cam" onclick="closeCameraHUD()">[ ENCERRAR MÓDULO VISUAL ]</button>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        let wakeLock = null;
+        async function reqWL() { try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {} }
+        document.addEventListener('visibilitychange', () => { if (wakeLock !== null && document.visibilityState === 'visible') reqWL(); }); reqWL();
+        function vibe(p) { if("vibrate" in navigator) navigator.vibrate(p); }
+
+        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
+
+        let isVoiceActive = false; let lastAlert = 0;
+        function toggleVoiceAlerts() {
+            isVoiceActive = !isVoiceActive; const btn = document.getElementById('btn-voice');
+            if (isVoiceActive) { btn.classList.add('active'); document.getElementById('voice-ind').innerText = "ON"; if (Notification.permission !== "granted") Notification.requestPermission(); speak("Alerta vocal ativado"); } 
+            else { btn.classList.remove('active'); document.getElementById('voice-ind').innerText = "OFF"; }
+        }
+        function speak(t) { if (!isVoiceActive || !('speechSynthesis' in window)) return; window.speechSynthesis.cancel(); let u = new SpeechSynthesisUtterance(t); u.lang='pt-BR'; u.rate=1.2; window.speechSynthesis.speak(u); }
+
+        function triggerThreat(src, conf, sig, dist) {
+            document.getElementById('tgt-source').innerText = src; document.getElementById('tgt-conf').innerText = conf;
+            document.getElementById('tgt-freq').innerText = sig; document.getElementById('tgt-dist').innerText = dist;
+            let now = Date.now();
+            if (now - lastAlert > 10000) { 
+                vibe([300,100,300]); speak(`Ameaça detectada: ${src}`);
+                if(Notification.permission==="granted"&&document.visibilityState!=="visible") new Notification("⚠️ Ameaça Detectada", {body:`${src} | ${sig}`});
+                lastAlert = now; 
+            }
+        }
+
+        const satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 });
+        const map = L.map('map', { zoomControl: false, layers: [satLayer] }).setView([-17.25, -41.00], 15);
+        
+        let userCoords = null; let userMarker = null;
+        const iconBase = L.divIcon({ className: 'custom-div-icon', html: "<div style='background:var(--cyan); width:16px; height:16px; border-radius:50%; border:2px solid #fff; box-shadow:0 0 15px var(--cyan);'></div>", iconSize: [16,16], iconAnchor: [8,8] });
+
+        navigator.geolocation.watchPosition(pos => {
+            userCoords = [pos.coords.latitude, pos.coords.longitude];
+            document.getElementById('gps-dot').classList.add('active'); document.getElementById('gps-status').classList.add('ready');
+            document.getElementById('gps-coords').innerText = `${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`; document.getElementById('gps-accuracy').innerText = `${Math.round(pos.coords.accuracy)}m`;
+            if(!userMarker) { userMarker = L.marker(userCoords, {icon: iconBase}).addTo(map); map.setView(userCoords, 15); } 
+            else { userMarker.setLatLng(userCoords); }
+        }, e => console.error(e), { enableHighAccuracy: true });
+
+        function centerOnGPS() { if(userCoords) map.flyTo(userCoords, 16, {animate: true}); vibe([50]); }
+
+        let isAdsb = false; let adsbInt; let planesLayer = L.layerGroup().addTo(map);
+        async function toggleADSB() {
+            isAdsb = !isAdsb; const btn = document.getElementById('btn-adsb');
+            if(isAdsb) { btn.classList.add('active'); document.getElementById('adsb-ind').innerText = "ON"; fetchPlanes(); adsbInt = setInterval(fetchPlanes, 15000); }
+            else { btn.classList.remove('active'); document.getElementById('adsb-ind').innerText = "OFF"; clearInterval(adsbInt); planesLayer.clearLayers(); }
+        }
+        
+        async function fetchPlanes() {
+            if(!userCoords) return; const [lat, lng] = userCoords;
+            try {
+                const res = await fetch(`https://opensky-network.org/api/states/all?lamin=${lat-0.3}&lomin=${lng-0.3}&lamax=${lat+0.3}&lomax=${lng+0.3}`);
+                const data = await res.json(); planesLayer.clearLayers();
+                if(data.states) {
+                    data.states.forEach(p => {
+                        if(p[6]&&p[5]&&!p[8]) {
+                            const icn = L.divIcon({ className:'', html:`<div style="transform:rotate(${p[10]-45}deg);font-size:20px;text-shadow:0 0 5px #000;">✈️</div>`, iconSize:[24,24] });
+                            L.marker([p[6],p[5]], {icon:icn}).bindPopup(`<b>${p[1]||'UNK'}</b><br>Alt:${Math.round(p[7]||0)}m<br>Vel:${Math.round(p[9]*3.6)}km/h`).addTo(planesLayer);
+                            if(p[7]<1500) triggerThreat("ADS-B (AERO)", "100%", p[1]||p[0], `${Math.round(p[7])}m Alt`);
+                        }
+                    });
+                }
+            } catch(e) { console.error("Erro ao buscar dados ADS-B", e); }
+        }
+
+        let aiModel = null, isCam = false, stream = null;
+        const vid = document.getElementById('camera-video'), cvs = document.getElementById('ai-canvas'), ctx = cvs.getContext('2d');
+        cocoSsd.load().then(m => { aiModel = m; document.getElementById('ai-dot').classList.add('active'); document.getElementById('ai-status').classList.add('ready'); });
+
+        async function openCameraHUD() {
+            document.getElementById('camera-hud-modal').style.display='block'; document.getElementById('sidebar').classList.remove('open');
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: {ideal:1280}, height: {ideal:720} }});
+                vid.srcObject = stream; vid.onloadedmetadata = () => { cvs.width=vid.videoWidth; cvs.height=vid.videoHeight; isCam=true; detectFrame(); };
+            } catch(e) { alert("Câmera indisponível: " + e.message); closeCameraHUD(); }
+        }
+        
+        function closeCameraHUD() { isCam = false; if(stream) stream.getTracks().forEach(t=>t.stop()); document.getElementById('camera-hud-modal').style.display='none'; }
+
+        window.addEventListener('deviceorientation', e => { if(!isCam) return; let h = e.webkitCompassHeading || Math.abs(e.alpha-360); if(h) document.getElementById('hud-compass').innerText = `${h.toFixed(0)}°`; });
+
+        async function detectFrame() {
+            if(!isCam || !aiModel) return; ctx.clearRect(0,0,cvs.width,cvs.height);
+            const preds = await aiModel.detect(vid); let fnd = false;
+            preds.forEach(p => {
+                if(['bird','airplane','kite'].includes(p.class)) {
+                    fnd = true; ctx.strokeStyle='#f43f5e'; ctx.lineWidth=3; ctx.strokeRect(...p.bbox);
+                    ctx.fillStyle='rgba(244,63,94,0.8)'; ctx.fillRect(p.bbox[0],p.bbox[1]-20,180,20);
+                    ctx.fillStyle='#fff'; ctx.font='12px Share Tech Mono'; ctx.fillText(`UAV - ${(p.score*100).toFixed(0)}%`, p.bbox[0]+5, p.bbox[1]-5);
+                    triggerThreat("IA ÓPTICA", `${(p.score*100).toFixed(0)}%`, p.class.toUpperCase(), "Visada");
+                }
+            });
+            const hAl = document.getElementById('hud-alert');
+            if(fnd){ hAl.innerText="[ ALVO TRAVADO ]"; hAl.style.color="var(--red)"; hAl.style.borderColor="var(--red)"; }
+            else { hAl.innerText="BUSCA ATIVA..."; hAl.style.color="var(--cyan)"; hAl.style.borderColor="var(--cyan)"; }
+            if(isCam) requestAnimationFrame(detectFrame);
+        }
+
+        let audCtx, ana, audStr, audInt; let isAud = false;
+        async function toggleAcousticRadar() {
+            const btn = document.getElementById('btn-audio');
+            if(isAud) { clearInterval(audInt); if(audStr) audStr.getTracks().forEach(t=>t.stop()); if(audCtx) audCtx.close(); isAud=false; btn.classList.remove('active'); document.getElementById('audio-ind').innerText="OFF"; return; }
+            try {
+                audStr = await navigator.mediaDevices.getUserMedia({audio:true}); audCtx = new (window.AudioContext||window.webkitAudioContext)();
+                ana = audCtx.createAnalyser(); ana.fftSize=1024; audCtx.createMediaStreamSource(audStr).connect(ana);
+                isAud=true; btn.classList.add('active'); document.getElementById('audio-ind').innerText="ON";
+                const dArr = new Uint8Array(ana.frequencyBinCount);
+                audInt = setInterval(() => {
+                    ana.getByteFrequencyData(dArr); let s=0; for(let i=200;i<300;i++) s+=dArr[i]; let avg=s/100;
+                    if(avg>70) triggerThreat("SONAR", `${Math.min(100,avg).toFixed(1)}%`, "Alta RPM", "Aproximação");
+                }, 800);
+            } catch(e) { console.error("Erro ao ativar microfone", e); }
+        }
+    </script>
+</body>
+</html>
