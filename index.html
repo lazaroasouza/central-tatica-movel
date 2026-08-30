@@ -38,7 +38,7 @@
             position: absolute; top: 10px; left: 10px; bottom: 10px; width: 380px;
             background: var(--glass-bg); backdrop-filter: blur(10px); border: 1px solid var(--glass-border);
             border-radius: 12px; display: flex; flex-direction: column; z-index: 3000; padding: 15px; gap: 15px;
-            overflow-y: auto;
+            overflow-y: auto; box-shadow: 2px 0 20px rgba(0,0,0,0.5);
         }
 
         .header-title { font-family: var(--font-mono); font-size: 16px; color: var(--cyan); text-align: center; border-bottom: 1px solid var(--glass-border); padding-bottom: 10px; margin-bottom: 5px;}
@@ -55,7 +55,7 @@
             padding: 10px; font-family: var(--font-mono); font-size: 12px; border-radius: 6px; cursor: pointer; width: 100%;
             display: flex; justify-content: space-between; margin-bottom: 8px; transition: 0.3s;
         }
-        .btn-cyber.active { border-color: var(--cyan); background: rgba(14, 165, 233, 0.2); color: var(--cyan); }
+        .btn-cyber.active { border-color: var(--cyan); background: rgba(14, 165, 233, 0.2); color: var(--cyan); box-shadow: inset 0 0 10px rgba(14, 165, 233, 0.2);}
         
         /* LOG DE AMEAÇAS PERSISTENTE */
         #threat-log { max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
@@ -79,6 +79,7 @@
 </head>
 <body>
 
+    <!-- Camada que pisca a tela toda de vermelho -->
     <div id="critical-overlay"></div>
 
     <div id="app-container">
@@ -113,6 +114,7 @@
                 <div style="font-family: var(--font-mono); font-size: 12px; color: var(--cyan);" id="gps-data">Buscando satélites...</div>
             </div>
             
+            <!-- BOTÃO DE TESTE PARA VOCÊ VER A AMEAÇA NA TELA -->
             <button class="btn-cyber" onclick="simulateDroneThreat()" style="border-color: var(--yellow); color: var(--yellow); text-align: center; justify-content: center; margin-top: auto;">
                 ⚠️ INJETAR AMEAÇA FANTASMA (TESTE)
             </button>
@@ -121,7 +123,7 @@
         <div id="map"></div>
     </div>
 
-    <!-- CÂMERA -->
+    <!-- CÂMERA HUD -->
     <div id="cam-hud">
         <video id="cam-video" autoplay playsinline muted></video>
         <div class="crosshair"></div>
@@ -132,18 +134,49 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // 1. MAPA
+        // ==========================================
+        // 1. MAPA E LOCALIZAÇÃO COM MARCADOR VISUAL
+        // ==========================================
         const map = L.map('map', { zoomControl: false }).setView([-15.79, -47.88], 13);
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }).addTo(map);
 
         let userCoords = null;
-        navigator.geolocation.watchPosition(pos => {
-            userCoords = [pos.coords.latitude, pos.coords.longitude];
-            document.getElementById('gps-data').innerText = `LAT: ${pos.coords.latitude.toFixed(5)}\nLNG: ${pos.coords.longitude.toFixed(5)}\nACC: ${Math.round(pos.coords.accuracy)}m`;
-            map.setView(userCoords, 14);
-        }, e => console.error(e), { enableHighAccuracy: true });
+        let userMarker = null; // Variável para segurar o ícone da sua base
 
+        navigator.geolocation.watchPosition(
+            pos => {
+                userCoords = [pos.coords.latitude, pos.coords.longitude];
+                
+                // Atualiza os dados no painel lateral esquerdo
+                document.getElementById('gps-data').innerText = `LAT: ${pos.coords.latitude.toFixed(5)}\nLNG: ${pos.coords.longitude.toFixed(5)}\nACC: ${Math.round(pos.coords.accuracy)}m`;
+                
+                // Move a câmera do mapa para você
+                map.setView(userCoords, 16);
+
+                // Cria ou atualiza o seu marcador visual no mapa
+                if (!userMarker) {
+                    const baseIcon = L.divIcon({
+                        className: '',
+                        html: `<div style="width: 18px; height: 18px; background: var(--cyan); border-radius: 50%; box-shadow: 0 0 15px var(--cyan); border: 2px solid white;"></div>`,
+                        iconSize: [18, 18],
+                        iconAnchor: [9, 9]
+                    });
+                    userMarker = L.marker(userCoords, {icon: baseIcon}).addTo(map).bindPopup("<b style='color:black;'>📍 BASE C2 ATIVA</b>");
+                } else {
+                    userMarker.setLatLng(userCoords); // Se você se mover, o pino anda junto
+                }
+            }, 
+            error => {
+                // Se o navegador bloquear ou não tiver sinal de GPS, avisa na tela!
+                console.error("Falha no GPS: ", error);
+                document.getElementById('gps-data').innerHTML = `<span style="color: var(--red);">SINAL GPS PERDIDO:<br>${error.message}</span><br><span style="font-size:10px;">Verifique a permissão do navegador</span>`;
+            }, 
+            { enableHighAccuracy: true }
+        );
+
+        // ==========================================
         // 2. SISTEMA DE LOG E ALARME PERSISTENTE
+        // ==========================================
         let unacknowledgedThreats = 0;
 
         function logThreat(type, desc, distance) {
@@ -167,8 +200,10 @@
             
             // Toca alarme sonoro
             let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            let osc = audioCtx.createOscillator(); osc.type = 'square'; osc.frequency.setValueAtTime(880, audioCtx.currentTime);
-            osc.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.5);
+            let osc = audioCtx.createOscillator(); osc.type = 'square'; 
+            osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+            osc.connect(audioCtx.destination); 
+            osc.start(); osc.stop(audioCtx.currentTime + 0.5);
         }
 
         function acknowledgeThreats() {
@@ -183,19 +218,36 @@
             logThreat("UAS DETECTADO (RF)", "DJI Mavic 3 (OcuSync 3.0) MAC: 60:60:1F:...", "850m - Aproximação");
         }
 
-        // 3. CORREÇÃO DO ADS-B (Com simulação se o céu estiver vazio)
+        // ==========================================
+        // 3. RADAR DE AVIAÇÃO (ADS-B) COM SIMULAÇÃO
+        // ==========================================
         let adsbInt; let planesLayer = L.layerGroup().addTo(map); let adsbOn = false;
+        
         async function toggleADSB() {
             adsbOn = !adsbOn; const btn = document.getElementById('btn-adsb');
-            if(adsbOn) { btn.classList.add('active'); document.getElementById('adsb-ind').innerText = "ON"; fetchPlanes(); adsbInt = setInterval(fetchPlanes, 15000); }
-            else { btn.classList.remove('active'); document.getElementById('adsb-ind').innerText = "OFF"; clearInterval(adsbInt); planesLayer.clearLayers(); }
+            if(adsbOn) { 
+                btn.classList.add('active'); 
+                document.getElementById('adsb-ind').innerText = "ON"; 
+                fetchPlanes(); 
+                adsbInt = setInterval(fetchPlanes, 15000); 
+            } else { 
+                btn.classList.remove('active'); 
+                document.getElementById('adsb-ind').innerText = "OFF"; 
+                clearInterval(adsbInt); 
+                planesLayer.clearLayers(); 
+            }
         }
+        
         async function fetchPlanes() {
-            if(!userCoords) return; const [lat, lng] = userCoords;
+            if(!userCoords) return; 
+            const [lat, lng] = userCoords;
             try {
+                // Busca aviões reais na API OpenSky
                 const res = await fetch(`https://opensky-network.org/api/states/all?lamin=${lat-1.5}&lomin=${lng-1.5}&lamax=${lat+1.5}&lomax=${lng+1.5}`);
-                const data = await res.json(); planesLayer.clearLayers();
+                const data = await res.json(); 
+                planesLayer.clearLayers();
                 let found = false;
+                
                 if(data.states) {
                     data.states.forEach(p => {
                         if(p[6]&&p[5]) {
@@ -205,22 +257,29 @@
                         }
                     });
                 }
-                // Se não achar avião real, injeta um FALSO para você ver que o mapa funciona
+                
+                // Se não achar avião real, injeta um FALSO para você ver que o mapa e a função operam
                 if(!found) {
-                    console.log("Céu vazio. Injetando avião simulado para teste.");
+                    console.log("Céu vazio na API pública. Injetando avião simulado para teste de sistema.");
                     const icn = L.divIcon({ className:'', html:`<div style="transform:rotate(90deg);font-size:20px;">✈️</div>`, iconSize:[24,24] });
-                    L.marker([lat + 0.01, lng + 0.01], {icon:icn}).bindPopup(`<b>VOO SIMULADO (TESTE)</b><br>Alt: 3500m`).addTo(planesLayer);
+                    L.marker([lat + 0.01, lng + 0.01], {icon:icn}).bindPopup(`<b>VOO COMERCIAL (SIMULADO)</b><br>Alt: 3500m`).addTo(planesLayer);
                 }
-            } catch(e) { console.error("Erro ADS-B", e); }
+            } catch(e) { console.error("Erro na busca ADS-B", e); }
         }
 
-        // 4. MIRA ÓPTICA (Preparo para YOLOv8 via Backend)
+        // ==========================================
+        // 4. MIRA ÓPTICA (YOLOv8 PREP)
+        // ==========================================
         let stream;
         async function openCam() {
             document.getElementById('cam-hud').style.display='block';
-            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }});
-            document.getElementById('cam-video').srcObject = stream;
-            // No futuro, os frames daqui serão enviados via WebSocket para o Python (YOLOv8)
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }});
+                document.getElementById('cam-video').srcObject = stream;
+            } catch(e) {
+                alert("Erro ao abrir câmera: " + e.message);
+                closeCam();
+            }
         }
         function closeCam() {
             document.getElementById('cam-hud').style.display='none';
