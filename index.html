@@ -25,6 +25,10 @@
         #map { width: 100%; height: 100%; background: #030712; z-index: 1000; }
         #map::after { content: ''; position: absolute; top:0; left:0; width:100%; height:100%; z-index:1500; pointer-events:none; background-image: linear-gradient(rgba(56,189,248,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(56,189,248,0.05) 1px, transparent 1px); background-size: 40px 40px; }
 
+        /* Estilo para o controle de camadas do mapa ficar com cara de sistema */
+        .leaflet-control-layers { background: var(--glass-bg) !important; border: 1px solid var(--cyan) !important; color: var(--cyan) !important; font-family: var(--font-mono); border-radius: 4px !important; backdrop-filter: blur(5px); }
+        .leaflet-control-layers label { display: flex; align-items: center; gap: 5px; }
+
         /* ALARME GLOBAL CRÍTICO */
         #critical-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -103,7 +107,6 @@
             <div class="widget" id="alert-widget">
                 <div class="widget-header" style="color: var(--red);">LOG TÁTICO DE AMEAÇAS</div>
                 <div id="threat-log">
-                    <!-- Logs vão aparecer aqui e não vão sumir -->
                     <div style="color: var(--text-muted); font-size: 11px; font-family: var(--font-mono);">Nenhum alvo detectado no setor.</div>
                 </div>
                 <button class="btn-ack" id="btn-ack" style="display: none;" onclick="acknowledgeThreats()">RECONHECER AMEAÇAS</button>
@@ -114,7 +117,6 @@
                 <div style="font-family: var(--font-mono); font-size: 12px; color: var(--cyan);" id="gps-data">Buscando satélites...</div>
             </div>
             
-            <!-- BOTÃO DE TESTE PARA VOCÊ VER A AMEAÇA NA TELA -->
             <button class="btn-cyber" onclick="simulateDroneThreat()" style="border-color: var(--yellow); color: var(--yellow); text-align: center; justify-content: center; margin-top: auto;">
                 ⚠️ INJETAR AMEAÇA FANTASMA (TESTE)
             </button>
@@ -135,25 +137,37 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         // ==========================================
-        // 1. MAPA E LOCALIZAÇÃO COM MARCADOR VISUAL
+        // 1. MAPA (COM MÚLTIPLAS CAMADAS) E LOCALIZAÇÃO
         // ==========================================
-        const map = L.map('map', { zoomControl: false }).setView([-15.79, -47.88], 13);
-        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }).addTo(map);
+        
+        // Definição dos estilos de mapa
+        const satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 });
+        const darkLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 });
+        const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 });
+
+        // Inicializa o mapa com o satélite como padrão
+        const map = L.map('map', { 
+            zoomControl: false, 
+            layers: [satLayer] 
+        }).setView([-15.79, -47.88], 13);
+
+        // Adiciona o controle de seleção de mapas no canto superior direito
+        const baseMaps = {
+            "Visualização Satélite": satLayer,
+            "Tático Escuro (Cyber)": darkLayer,
+            "Mapa de Ruas": streetLayer
+        };
+        L.control.layers(baseMaps, null, {position: 'topright'}).addTo(map);
 
         let userCoords = null;
-        let userMarker = null; // Variável para segurar o ícone da sua base
+        let userMarker = null; 
 
         navigator.geolocation.watchPosition(
             pos => {
                 userCoords = [pos.coords.latitude, pos.coords.longitude];
-                
-                // Atualiza os dados no painel lateral esquerdo
                 document.getElementById('gps-data').innerText = `LAT: ${pos.coords.latitude.toFixed(5)}\nLNG: ${pos.coords.longitude.toFixed(5)}\nACC: ${Math.round(pos.coords.accuracy)}m`;
-                
-                // Move a câmera do mapa para você
                 map.setView(userCoords, 16);
 
-                // Cria ou atualiza o seu marcador visual no mapa
                 if (!userMarker) {
                     const baseIcon = L.divIcon({
                         className: '',
@@ -163,11 +177,10 @@
                     });
                     userMarker = L.marker(userCoords, {icon: baseIcon}).addTo(map).bindPopup("<b style='color:black;'>📍 BASE C2 ATIVA</b>");
                 } else {
-                    userMarker.setLatLng(userCoords); // Se você se mover, o pino anda junto
+                    userMarker.setLatLng(userCoords); 
                 }
             }, 
             error => {
-                // Se o navegador bloquear ou não tiver sinal de GPS, avisa na tela!
                 console.error("Falha no GPS: ", error);
                 document.getElementById('gps-data').innerHTML = `<span style="color: var(--red);">SINAL GPS PERDIDO:<br>${error.message}</span><br><span style="font-size:10px;">Verifique a permissão do navegador</span>`;
             }, 
@@ -186,7 +199,7 @@
             document.getElementById('btn-ack').style.display = 'block';
             
             const logContainer = document.getElementById('threat-log');
-            if(unacknowledgedThreats === 1) logContainer.innerHTML = ''; // Limpa o "Nenhum alvo"
+            if(unacknowledgedThreats === 1) logContainer.innerHTML = ''; 
 
             const time = new Date().toLocaleTimeString();
             const logHTML = `
@@ -198,7 +211,6 @@
             `;
             logContainer.insertAdjacentHTML('afterbegin', logHTML);
             
-            // Toca alarme sonoro
             let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             let osc = audioCtx.createOscillator(); osc.type = 'square'; 
             osc.frequency.setValueAtTime(880, audioCtx.currentTime);
@@ -242,7 +254,6 @@
             if(!userCoords) return; 
             const [lat, lng] = userCoords;
             try {
-                // Busca aviões reais na API OpenSky
                 const res = await fetch(`https://opensky-network.org/api/states/all?lamin=${lat-1.5}&lomin=${lng-1.5}&lamax=${lat+1.5}&lomax=${lng+1.5}`);
                 const data = await res.json(); 
                 planesLayer.clearLayers();
@@ -258,7 +269,6 @@
                     });
                 }
                 
-                // Se não achar avião real, injeta um FALSO para você ver que o mapa e a função operam
                 if(!found) {
                     console.log("Céu vazio na API pública. Injetando avião simulado para teste de sistema.");
                     const icn = L.divIcon({ className:'', html:`<div style="transform:rotate(90deg);font-size:20px;">✈️</div>`, iconSize:[24,24] });
