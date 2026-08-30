@@ -2,346 +2,229 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>DedroneTracker.AI - C2 Multisensor</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DedroneTracker.AI - C2 PRO</title>
     
-    <meta name="theme-color" content="#030712">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
-
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Share+Tech+Mono&display=swap');
 
         :root {
-            --bg-base: #030712;
-            --glass-bg: rgba(17, 24, 39, 0.6);
-            --glass-border: rgba(56, 189, 248, 0.2);
-            --cyan: #38bdf8;
-            --cyan-glow: rgba(56, 189, 248, 0.5);
-            --red: #f43f5e;
-            --green: #10b981;
-            --yellow: #f59e0b;
-            --text-main: #f8fafc;
-            --text-muted: #64748b;
-            --font-ui: 'Rajdhani', sans-serif;
-            --font-mono: 'Share Tech Mono', monospace;
+            --bg-base: #030712; --glass-bg: rgba(17, 24, 39, 0.75); --glass-border: rgba(56, 189, 248, 0.3);
+            --cyan: #38bdf8; --cyan-glow: rgba(56, 189, 248, 0.6);
+            --red: #f43f5e; --red-glow: rgba(244, 63, 94, 0.8);
+            --green: #10b981; --yellow: #f59e0b;
+            --text-main: #f8fafc; --text-muted: #64748b;
+            --font-ui: 'Rajdhani', sans-serif; --font-mono: 'Share Tech Mono', monospace;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-tap-highlight-color: transparent; }
-        html, body { height: 100%; width: 100%; font-family: var(--font-ui); background: var(--bg-base); color: var(--text-main); overflow: hidden; position: fixed; }
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+        html, body { height: 100%; width: 100%; font-family: var(--font-ui); background: var(--bg-base); color: var(--text-main); overflow: hidden; }
 
-        #header {
-            position: absolute; top: env(safe-area-inset-top, 10px); left: 10px; right: 10px; z-index: 4000;
-            background: var(--glass-bg); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-            border: 1px solid var(--glass-border); border-radius: 12px;
-            display: flex; align-items: center; justify-content: space-between; padding: 10px 15px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-        }
-        
-        .logo { font-family: var(--font-mono); font-size: 14px; color: #fff; letter-spacing: 1px; display: flex; align-items: center; gap: 8px; }
-        .logo-icon { width: 12px; height: 12px; background: var(--cyan); border-radius: 50%; box-shadow: 0 0 10px var(--cyan); animation: pulse 2s infinite; }
-        
-        .status-container { display: flex; gap: 8px; }
-        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); }
-        .status-dot.active { background: var(--green); box-shadow: 0 0 8px var(--green); }
-        .status-badge { font-family: var(--font-mono); font-size: 10px; display: flex; align-items: center; gap: 4px; color: var(--text-muted); }
-        .status-badge.ready { color: var(--green); }
-
-        #app-container { position: absolute; top: 0; bottom: 0; left: 0; right: 0; display: flex; width: 100%; overflow: hidden; }
+        #app-container { position: absolute; top: 0; bottom: 0; left: 0; right: 0; display: flex; width: 100%; }
         #map { width: 100%; height: 100%; background: #030712; z-index: 1000; }
-        
-        #map::after {
-            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1500; pointer-events: none;
-            background-image: linear-gradient(rgba(56, 189, 248, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(56, 189, 248, 0.05) 1px, transparent 1px);
-            background-size: 40px 40px;
-        }
+        #map::after { content: ''; position: absolute; top:0; left:0; width:100%; height:100%; z-index:1500; pointer-events:none; background-image: linear-gradient(rgba(56,189,248,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(56,189,248,0.05) 1px, transparent 1px); background-size: 40px 40px; }
 
+        /* ALARME GLOBAL CRÍTICO */
+        #critical-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            box-shadow: inset 0 0 150px var(--red); z-index: 9999;
+            pointer-events: none; display: none; animation: flashRed 1s infinite alternate;
+        }
+        @keyframes flashRed { 0% { opacity: 0.3; } 100% { opacity: 0.8; } }
+
+        /* PAINEL LATERAL ESQUERDO */
         #sidebar {
-            position: absolute; top: calc(60px + env(safe-area-inset-top, 0px)); left: 10px; bottom: max(20px, env(safe-area-inset-bottom, 20px));
-            width: 340px; background: var(--glass-bg); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
-            border: 1px solid var(--glass-border); border-radius: 16px;
-            display: flex; flex-direction: column; z-index: 3000; padding: 15px; gap: 15px;
-            overflow-y: auto; box-shadow: 2px 0 20px rgba(0,0,0,0.5);
-            transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+            position: absolute; top: 10px; left: 10px; bottom: 10px; width: 380px;
+            background: var(--glass-bg); backdrop-filter: blur(10px); border: 1px solid var(--glass-border);
+            border-radius: 12px; display: flex; flex-direction: column; z-index: 3000; padding: 15px; gap: 15px;
+            overflow-y: auto;
         }
 
-        .widget {
-            background: rgba(3, 7, 18, 0.5); border: 1px solid rgba(255,255,255,0.05);
-            border-radius: 12px; padding: 12px; position: relative; overflow: hidden;
-        }
-        .widget::before { content: ''; position: absolute; top: 0; left: 0; width: 2px; height: 100%; background: var(--cyan); }
-        .widget-alert::before { background: var(--red); box-shadow: 0 0 10px var(--red); }
-        
-        .widget-header { font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--cyan); margin-bottom: 10px; font-weight: 700; display: flex; align-items: center; justify-content: space-between; }
-        
-        .data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-        .data-label { font-size: 10px; color: var(--text-muted); font-family: var(--font-mono); }
-        .data-val { font-size: 14px; font-weight: 700; color: #fff; font-family: var(--font-mono); }
-        .data-val.alert { color: var(--red); text-shadow: 0 0 8px rgba(244, 63, 94, 0.5); }
+        .header-title { font-family: var(--font-mono); font-size: 16px; color: var(--cyan); text-align: center; border-bottom: 1px solid var(--glass-border); padding-bottom: 10px; margin-bottom: 5px;}
 
+        .widget { background: rgba(3, 7, 18, 0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 12px; position: relative; }
+        .widget::before { content: ''; position: absolute; top: 0; left: 0; width: 3px; height: 100%; background: var(--cyan); }
+        .widget.alert-active { border-color: var(--red); background: rgba(244, 63, 94, 0.1); }
+        .widget.alert-active::before { background: var(--red); box-shadow: 0 0 10px var(--red); }
+
+        .widget-header { font-size: 12px; letter-spacing: 1px; color: var(--cyan); margin-bottom: 10px; font-weight: 700; display: flex; justify-content: space-between; }
+        
         .btn-cyber {
-            background: linear-gradient(90deg, rgba(15,23,42,0.8), rgba(30,41,59,0.8)); border: 1px solid var(--glass-border);
-            color: #fff; padding: 12px 15px; font-family: var(--font-mono); font-size: 12px; text-transform: uppercase;
-            border-radius: 8px; cursor: pointer; width: 100%; display: flex; justify-content: space-between; align-items: center;
-            transition: all 0.3s ease; position: relative; overflow: hidden;
+            background: linear-gradient(90deg, #0f172a, #1e293b); border: 1px solid var(--glass-border); color: #fff;
+            padding: 10px; font-family: var(--font-mono); font-size: 12px; border-radius: 6px; cursor: pointer; width: 100%;
+            display: flex; justify-content: space-between; margin-bottom: 8px; transition: 0.3s;
         }
-        .btn-cyber::after { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent); transition: 0.5s; }
-        .btn-cyber:active::after { left: 100%; }
+        .btn-cyber.active { border-color: var(--cyan); background: rgba(14, 165, 233, 0.2); color: var(--cyan); }
         
-        .btn-cyber.active { border-color: var(--cyan); background: rgba(14, 165, 233, 0.1); box-shadow: inset 0 0 15px rgba(14, 165, 233, 0.2); }
-        .btn-cyber.active .indicator { color: var(--cyan); text-shadow: 0 0 8px var(--cyan); }
-        .indicator { color: var(--text-muted); font-weight: bold; }
+        /* LOG DE AMEAÇAS PERSISTENTE */
+        #threat-log { max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+        .log-item { background: rgba(244, 63, 94, 0.15); border-left: 3px solid var(--red); padding: 8px; font-family: var(--font-mono); font-size: 11px; }
+        .log-item span.time { color: var(--yellow); }
+        .log-item span.type { color: var(--red); font-weight: bold; }
+        
+        .btn-ack { background: var(--red); color: white; border: none; padding: 10px; font-family: var(--font-ui); font-weight: bold; border-radius: 4px; cursor: pointer; width: 100%; margin-top: 10px; animation: pulse 1.5s infinite; }
+        .btn-ack:active { transform: scale(0.98); }
 
-        .btn-action { background: var(--cyan); color: #000; border: none; font-weight: 900; box-shadow: 0 0 15px var(--cyan-glow); margin-top: 5px; }
-        .btn-action:active { transform: scale(0.97); }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 var(--red-glow); } 70% { box-shadow: 0 0 0 10px rgba(244,63,94,0); } 100% { box-shadow: 0 0 0 0 rgba(244,63,94,0); } }
 
-        .map-controls { position: absolute; bottom: max(20px, env(safe-area-inset-bottom, 20px)); right: 15px; z-index: 2000; display: flex; flex-direction: column; gap: 10px; }
-        .btn-fab { width: 44px; height: 44px; border-radius: 50%; background: var(--glass-bg); backdrop-filter: blur(10px); border: 1px solid var(--glass-border); color: var(--cyan); display: flex; align-items: center; justify-content: center; font-size: 18px; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.5); transition: 0.3s; }
-        .btn-fab:active { transform: scale(0.9); background: var(--cyan); color: #000; }
-        
-        #btn-toggle-menu { display: none; position: absolute; top: calc(60px + env(safe-area-inset-top, 0px)); left: 10px; z-index: 2500; border-radius: 8px; width: auto; padding: 10px 15px; font-family: var(--font-mono); font-size: 12px; }
-
-        @media (max-width: 768px) {
-            #btn-toggle-menu { display: flex; }
-            #sidebar {
-                top: auto; bottom: 0; left: 0; width: 100%; height: 75vh;
-                border-radius: 24px 24px 0 0; padding-bottom: max(20px, env(safe-area-inset-bottom, 20px));
-                transform: translateY(110%);
-            }
-            #sidebar.open { transform: translateY(0); }
-            .map-controls { bottom: max(90px, env(safe-area-inset-bottom, 90px)); }
-        }
-
-        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(56, 189, 248, 0); } 100% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0); } }
-        
-        #camera-hud-modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; z-index: 9000; display: none; }
-        #camera-video { width: 100%; height: 100%; object-fit: cover; position: absolute; }
-        .hud-scanline { position: absolute; width: 100%; height: 4px; background: rgba(56, 189, 248, 0.5); box-shadow: 0 0 15px var(--cyan); z-index: 9001; animation: scan 3s linear infinite; opacity: 0.6; pointer-events: none; }
-        @keyframes scan { 0% { top: 0; } 100% { top: 100%; } }
-        #ai-canvas { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 9002; pointer-events: none; }
-        
-        .hud-overlay-ui { position: absolute; top: env(safe-area-inset-top, 20px); left: 20px; right: 20px; z-index: 9003; display: flex; justify-content: space-between; pointer-events: none; }
-        .hud-target-box { background: rgba(0,0,0,0.5); border: 1px solid var(--cyan); padding: 8px 15px; border-radius: 4px; font-family: var(--font-mono); color: var(--cyan); text-shadow: 0 0 5px var(--cyan); }
-        
-        .hud-footer { position: absolute; bottom: max(20px, env(safe-area-inset-bottom, 20px)); left: 20px; right: 20px; z-index: 9004; display: flex; gap: 15px; }
-        .btn-hud-action { flex: 1; padding: 15px; border-radius: 8px; font-family: var(--font-ui); font-weight: 700; font-size: 14px; text-transform: uppercase; border: none; cursor: pointer; backdrop-filter: blur(5px); }
-        .btn-close-cam { background: rgba(244, 63, 94, 0.2); border: 1px solid var(--red); color: var(--red); }
+        /* HUD CÂMERA */
+        #cam-hud { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; z-index: 9000; display: none; }
+        #cam-video { width: 100%; height: 100%; object-fit: cover; position: absolute; opacity: 0.7;}
+        .crosshair { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 100px; height: 100px; border: 2px solid var(--cyan); border-radius: 50%; pointer-events: none; z-index: 9002; display: flex; align-items: center; justify-content: center;}
+        .crosshair::after { content: '+'; color: var(--cyan); font-size: 24px; }
+        .cam-overlay { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 9003; display: flex; gap: 20px;}
+        .btn-hud { background: rgba(3,7,18,0.8); border: 1px solid var(--cyan); color: var(--cyan); padding: 15px 30px; font-family: var(--font-mono); cursor: pointer; border-radius: 4px; }
     </style>
 </head>
 <body>
 
-    <div id="header">
-        <div class="logo">
-            <div class="logo-icon"></div>
-            NEXUS // C2 TÁTICO
-        </div>
-        <div class="status-container">
-            <div class="status-badge" id="ai-status">
-                <div class="status-dot" id="ai-dot"></div> AI WAIT
-            </div>
-            <div class="status-badge" id="gps-status">
-                <div class="status-dot" id="gps-dot"></div> LOC WAIT
-            </div>
-        </div>
-    </div>
+    <div id="critical-overlay"></div>
 
     <div id="app-container">
-        <button class="btn-fab" id="btn-toggle-menu" onclick="toggleSidebar()">☰</button>
-
         <div id="sidebar">
+            <div class="header-title">NEXUS C2 // SENSOR FUSION</div>
+
             <div class="widget">
-                <div class="widget-header">MÓDULOS DE SENSORES</div>
+                <div class="widget-header">CONTROLE DE SENSORES</div>
                 <button class="btn-cyber" id="btn-adsb" onclick="toggleADSB()">
-                    RADAR ADS-B (TRÁFEGO) <span class="indicator" id="adsb-ind">OFF</span>
+                    [1] RADAR ADS-B (Aviação) <span id="adsb-ind">OFF</span>
                 </button>
-                <button class="btn-cyber" id="btn-audio" onclick="toggleAcousticRadar()" style="margin-top: 8px;">
-                    RADAR ACÚSTICO (SONAR) <span class="indicator" id="audio-ind">OFF</span>
+                <button class="btn-cyber" id="btn-sdr">
+                    [2] SDR REMOTE ID (RF) <span style="color:var(--yellow)">CONECTAR PYTHON</span>
                 </button>
-                <button class="btn-cyber" id="btn-voice" onclick="toggleVoiceAlerts()" style="margin-top: 8px;">
-                    SISTEMA DE VOZ / PUSH <span class="indicator" id="voice-ind">OFF</span>
+                <button class="btn-cyber" id="btn-yolo" onclick="openCam()">
+                    [3] MIRA ÓPTICA (YOLOv8) <span>OFF</span>
                 </button>
             </div>
 
-            <div class="widget widget-alert">
-                <div class="widget-header" style="color: var(--red);">AMEAÇA DETECTADA</div>
-                <div class="data-grid">
-                    <div>
-                        <div class="data-label">FONTE / SENSOR</div>
-                        <div class="data-val alert" id="tgt-source">NENHUMA</div>
-                    </div>
-                    <div>
-                        <div class="data-label">CONFIANÇA</div>
-                        <div class="data-val alert" id="tgt-conf">--%</div>
-                    </div>
-                    <div>
-                        <div class="data-label">ASSINATURA</div>
-                        <div class="data-val" id="tgt-freq">--</div>
-                    </div>
-                    <div>
-                        <div class="data-label">DISTÂNCIA/ALT</div>
-                        <div class="data-val" id="tgt-dist">--</div>
-                    </div>
+            <!-- LOG PERSISTENTE - ESTE É O CORAÇÃO DA DETECÇÃO -->
+            <div class="widget" id="alert-widget">
+                <div class="widget-header" style="color: var(--red);">LOG TÁTICO DE AMEAÇAS</div>
+                <div id="threat-log">
+                    <!-- Logs vão aparecer aqui e não vão sumir -->
+                    <div style="color: var(--text-muted); font-size: 11px; font-family: var(--font-mono);">Nenhum alvo detectado no setor.</div>
                 </div>
+                <button class="btn-ack" id="btn-ack" style="display: none;" onclick="acknowledgeThreats()">RECONHECER AMEAÇAS</button>
             </div>
 
             <div class="widget">
-                <div class="widget-header">TELEMETRIA LOCAL</div>
-                <div class="data-grid">
-                    <div>
-                        <div class="data-label">COORDENADAS</div>
-                        <div class="data-val" id="gps-coords">Buscando...</div>
-                    </div>
-                    <div>
-                        <div class="data-label">PRECISÃO (GNSS)</div>
-                        <div class="data-val" id="gps-accuracy">-- m</div>
-                    </div>
-                </div>
+                <div class="widget-header">TELEMETRIA GPS</div>
+                <div style="font-family: var(--font-mono); font-size: 12px; color: var(--cyan);" id="gps-data">Buscando satélites...</div>
             </div>
-
-            <button class="btn-cyber btn-action" onclick="openCameraHUD()">[ ATIVAR MIRA ÓPTICA IA ]</button>
-        </div>
-
-        <div class="map-controls">
-            <button class="btn-fab" onclick="centerOnGPS()" title="Centralizar GPS">🎯</button>
+            
+            <button class="btn-cyber" onclick="simulateDroneThreat()" style="border-color: var(--yellow); color: var(--yellow); text-align: center; justify-content: center; margin-top: auto;">
+                ⚠️ INJETAR AMEAÇA FANTASMA (TESTE)
+            </button>
         </div>
 
         <div id="map"></div>
     </div>
 
-    <div id="camera-hud-modal">
-        <video id="camera-video" autoplay playsinline muted></video>
-        <div class="hud-scanline"></div>
-        <canvas id="ai-canvas"></canvas>
-        
-        <div class="hud-overlay-ui">
-            <div class="hud-target-box" id="hud-alert">MODO BUSCA ATIVO...</div>
-            <div class="hud-target-box" id="hud-compass" style="color:var(--green); border-color:var(--green);">0° N</div>
-        </div>
-
-        <div class="hud-footer">
-            <button class="btn-hud-action btn-close-cam" onclick="closeCameraHUD()">[ ENCERRAR MÓDULO VISUAL ]</button>
+    <!-- CÂMERA -->
+    <div id="cam-hud">
+        <video id="cam-video" autoplay playsinline muted></video>
+        <div class="crosshair"></div>
+        <div class="cam-overlay">
+            <button class="btn-hud" style="color: var(--red); border-color: var(--red);" onclick="closeCam()">FECHAR CÂMERA</button>
         </div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        let wakeLock = null;
-        async function reqWL() { try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {} }
-        document.addEventListener('visibilitychange', () => { if (wakeLock !== null && document.visibilityState === 'visible') reqWL(); }); reqWL();
-        function vibe(p) { if("vibrate" in navigator) navigator.vibrate(p); }
+        // 1. MAPA
+        const map = L.map('map', { zoomControl: false }).setView([-15.79, -47.88], 13);
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }).addTo(map);
 
-        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
-
-        let isVoiceActive = false; let lastAlert = 0;
-        function toggleVoiceAlerts() {
-            isVoiceActive = !isVoiceActive; const btn = document.getElementById('btn-voice');
-            if (isVoiceActive) { btn.classList.add('active'); document.getElementById('voice-ind').innerText = "ON"; if (Notification.permission !== "granted") Notification.requestPermission(); speak("Alerta vocal ativado"); } 
-            else { btn.classList.remove('active'); document.getElementById('voice-ind').innerText = "OFF"; }
-        }
-        function speak(t) { if (!isVoiceActive || !('speechSynthesis' in window)) return; window.speechSynthesis.cancel(); let u = new SpeechSynthesisUtterance(t); u.lang='pt-BR'; u.rate=1.2; window.speechSynthesis.speak(u); }
-
-        function triggerThreat(src, conf, sig, dist) {
-            document.getElementById('tgt-source').innerText = src; document.getElementById('tgt-conf').innerText = conf;
-            document.getElementById('tgt-freq').innerText = sig; document.getElementById('tgt-dist').innerText = dist;
-            let now = Date.now();
-            if (now - lastAlert > 10000) { 
-                vibe([300,100,300]); speak(`Ameaça detectada: ${src}`);
-                if(Notification.permission==="granted"&&document.visibilityState!=="visible") new Notification("⚠️ Ameaça Detectada", {body:`${src} | ${sig}`});
-                lastAlert = now; 
-            }
-        }
-
-        const satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 });
-        const map = L.map('map', { zoomControl: false, layers: [satLayer] }).setView([-17.25, -41.00], 15);
-        
-        let userCoords = null; let userMarker = null;
-        const iconBase = L.divIcon({ className: 'custom-div-icon', html: "<div style='background:var(--cyan); width:16px; height:16px; border-radius:50%; border:2px solid #fff; box-shadow:0 0 15px var(--cyan);'></div>", iconSize: [16,16], iconAnchor: [8,8] });
-
+        let userCoords = null;
         navigator.geolocation.watchPosition(pos => {
             userCoords = [pos.coords.latitude, pos.coords.longitude];
-            document.getElementById('gps-dot').classList.add('active'); document.getElementById('gps-status').classList.add('ready');
-            document.getElementById('gps-coords').innerText = `${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`; document.getElementById('gps-accuracy').innerText = `${Math.round(pos.coords.accuracy)}m`;
-            if(!userMarker) { userMarker = L.marker(userCoords, {icon: iconBase}).addTo(map); map.setView(userCoords, 15); } 
-            else { userMarker.setLatLng(userCoords); }
+            document.getElementById('gps-data').innerText = `LAT: ${pos.coords.latitude.toFixed(5)}\nLNG: ${pos.coords.longitude.toFixed(5)}\nACC: ${Math.round(pos.coords.accuracy)}m`;
+            map.setView(userCoords, 14);
         }, e => console.error(e), { enableHighAccuracy: true });
 
-        function centerOnGPS() { if(userCoords) map.flyTo(userCoords, 16, {animate: true}); vibe([50]); }
+        // 2. SISTEMA DE LOG E ALARME PERSISTENTE
+        let unacknowledgedThreats = 0;
 
-        let isAdsb = false; let adsbInt; let planesLayer = L.layerGroup().addTo(map);
+        function logThreat(type, desc, distance) {
+            unacknowledgedThreats++;
+            document.getElementById('critical-overlay').style.display = 'block';
+            document.getElementById('alert-widget').classList.add('alert-active');
+            document.getElementById('btn-ack').style.display = 'block';
+            
+            const logContainer = document.getElementById('threat-log');
+            if(unacknowledgedThreats === 1) logContainer.innerHTML = ''; // Limpa o "Nenhum alvo"
+
+            const time = new Date().toLocaleTimeString();
+            const logHTML = `
+                <div class="log-item">
+                    <span class="time">[${time}]</span> <span class="type">${type}</span><br>
+                    INFO: ${desc}<br>
+                    DISTÂNCIA EST.: ${distance}
+                </div>
+            `;
+            logContainer.insertAdjacentHTML('afterbegin', logHTML);
+            
+            // Toca alarme sonoro
+            let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            let osc = audioCtx.createOscillator(); osc.type = 'square'; osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+            osc.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.5);
+        }
+
+        function acknowledgeThreats() {
+            unacknowledgedThreats = 0;
+            document.getElementById('critical-overlay').style.display = 'none';
+            document.getElementById('alert-widget').classList.remove('alert-active');
+            document.getElementById('btn-ack').style.display = 'none';
+            document.getElementById('threat-log').innerHTML = '<div style="color: var(--text-muted); font-size: 11px; font-family: var(--font-mono);">Setor limpo. Ameaças reconhecidas.</div>';
+        }
+
+        function simulateDroneThreat() {
+            logThreat("UAS DETECTADO (RF)", "DJI Mavic 3 (OcuSync 3.0) MAC: 60:60:1F:...", "850m - Aproximação");
+        }
+
+        // 3. CORREÇÃO DO ADS-B (Com simulação se o céu estiver vazio)
+        let adsbInt; let planesLayer = L.layerGroup().addTo(map); let adsbOn = false;
         async function toggleADSB() {
-            isAdsb = !isAdsb; const btn = document.getElementById('btn-adsb');
-            if(isAdsb) { btn.classList.add('active'); document.getElementById('adsb-ind').innerText = "ON"; fetchPlanes(); adsbInt = setInterval(fetchPlanes, 15000); }
+            adsbOn = !adsbOn; const btn = document.getElementById('btn-adsb');
+            if(adsbOn) { btn.classList.add('active'); document.getElementById('adsb-ind').innerText = "ON"; fetchPlanes(); adsbInt = setInterval(fetchPlanes, 15000); }
             else { btn.classList.remove('active'); document.getElementById('adsb-ind').innerText = "OFF"; clearInterval(adsbInt); planesLayer.clearLayers(); }
         }
-        
         async function fetchPlanes() {
             if(!userCoords) return; const [lat, lng] = userCoords;
             try {
-                const res = await fetch(`https://opensky-network.org/api/states/all?lamin=${lat-0.3}&lomin=${lng-0.3}&lamax=${lat+0.3}&lomax=${lng+0.3}`);
+                const res = await fetch(`https://opensky-network.org/api/states/all?lamin=${lat-1.5}&lomin=${lng-1.5}&lamax=${lat+1.5}&lomax=${lng+1.5}`);
                 const data = await res.json(); planesLayer.clearLayers();
+                let found = false;
                 if(data.states) {
                     data.states.forEach(p => {
-                        if(p[6]&&p[5]&&!p[8]) {
-                            const icn = L.divIcon({ className:'', html:`<div style="transform:rotate(${p[10]-45}deg);font-size:20px;text-shadow:0 0 5px #000;">✈️</div>`, iconSize:[24,24] });
-                            L.marker([p[6],p[5]], {icon:icn}).bindPopup(`<b>${p[1]||'UNK'}</b><br>Alt:${Math.round(p[7]||0)}m<br>Vel:${Math.round(p[9]*3.6)}km/h`).addTo(planesLayer);
-                            if(p[7]<1500) triggerThreat("ADS-B (AERO)", "100%", p[1]||p[0], `${Math.round(p[7])}m Alt`);
+                        if(p[6]&&p[5]) {
+                            found = true;
+                            const icn = L.divIcon({ className:'', html:`<div style="transform:rotate(${p[10]-45}deg);font-size:20px;">✈️</div>`, iconSize:[24,24] });
+                            L.marker([p[6],p[5]], {icon:icn}).bindPopup(`<b>${p[1]||'UNK'}</b><br>Alt:${Math.round(p[7]||0)}m`).addTo(planesLayer);
                         }
                     });
                 }
-            } catch(e) { console.error("Erro ao buscar dados ADS-B", e); }
-        }
-
-        let aiModel = null, isCam = false, stream = null;
-        const vid = document.getElementById('camera-video'), cvs = document.getElementById('ai-canvas'), ctx = cvs.getContext('2d');
-        cocoSsd.load().then(m => { aiModel = m; document.getElementById('ai-dot').classList.add('active'); document.getElementById('ai-status').classList.add('ready'); });
-
-        async function openCameraHUD() {
-            document.getElementById('camera-hud-modal').style.display='block'; document.getElementById('sidebar').classList.remove('open');
-            try {
-                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: {ideal:1280}, height: {ideal:720} }});
-                vid.srcObject = stream; vid.onloadedmetadata = () => { cvs.width=vid.videoWidth; cvs.height=vid.videoHeight; isCam=true; detectFrame(); };
-            } catch(e) { alert("Câmera indisponível: " + e.message); closeCameraHUD(); }
-        }
-        
-        function closeCameraHUD() { isCam = false; if(stream) stream.getTracks().forEach(t=>t.stop()); document.getElementById('camera-hud-modal').style.display='none'; }
-
-        window.addEventListener('deviceorientation', e => { if(!isCam) return; let h = e.webkitCompassHeading || Math.abs(e.alpha-360); if(h) document.getElementById('hud-compass').innerText = `${h.toFixed(0)}°`; });
-
-        async function detectFrame() {
-            if(!isCam || !aiModel) return; ctx.clearRect(0,0,cvs.width,cvs.height);
-            const preds = await aiModel.detect(vid); let fnd = false;
-            preds.forEach(p => {
-                if(['bird','airplane','kite'].includes(p.class)) {
-                    fnd = true; ctx.strokeStyle='#f43f5e'; ctx.lineWidth=3; ctx.strokeRect(...p.bbox);
-                    ctx.fillStyle='rgba(244,63,94,0.8)'; ctx.fillRect(p.bbox[0],p.bbox[1]-20,180,20);
-                    ctx.fillStyle='#fff'; ctx.font='12px Share Tech Mono'; ctx.fillText(`UAV - ${(p.score*100).toFixed(0)}%`, p.bbox[0]+5, p.bbox[1]-5);
-                    triggerThreat("IA ÓPTICA", `${(p.score*100).toFixed(0)}%`, p.class.toUpperCase(), "Visada");
+                // Se não achar avião real, injeta um FALSO para você ver que o mapa funciona
+                if(!found) {
+                    console.log("Céu vazio. Injetando avião simulado para teste.");
+                    const icn = L.divIcon({ className:'', html:`<div style="transform:rotate(90deg);font-size:20px;">✈️</div>`, iconSize:[24,24] });
+                    L.marker([lat + 0.01, lng + 0.01], {icon:icn}).bindPopup(`<b>VOO SIMULADO (TESTE)</b><br>Alt: 3500m`).addTo(planesLayer);
                 }
-            });
-            const hAl = document.getElementById('hud-alert');
-            if(fnd){ hAl.innerText="[ ALVO TRAVADO ]"; hAl.style.color="var(--red)"; hAl.style.borderColor="var(--red)"; }
-            else { hAl.innerText="BUSCA ATIVA..."; hAl.style.color="var(--cyan)"; hAl.style.borderColor="var(--cyan)"; }
-            if(isCam) requestAnimationFrame(detectFrame);
+            } catch(e) { console.error("Erro ADS-B", e); }
         }
 
-        let audCtx, ana, audStr, audInt; let isAud = false;
-        async function toggleAcousticRadar() {
-            const btn = document.getElementById('btn-audio');
-            if(isAud) { clearInterval(audInt); if(audStr) audStr.getTracks().forEach(t=>t.stop()); if(audCtx) audCtx.close(); isAud=false; btn.classList.remove('active'); document.getElementById('audio-ind').innerText="OFF"; return; }
-            try {
-                audStr = await navigator.mediaDevices.getUserMedia({audio:true}); audCtx = new (window.AudioContext||window.webkitAudioContext)();
-                ana = audCtx.createAnalyser(); ana.fftSize=1024; audCtx.createMediaStreamSource(audStr).connect(ana);
-                isAud=true; btn.classList.add('active'); document.getElementById('audio-ind').innerText="ON";
-                const dArr = new Uint8Array(ana.frequencyBinCount);
-                audInt = setInterval(() => {
-                    ana.getByteFrequencyData(dArr); let s=0; for(let i=200;i<300;i++) s+=dArr[i]; let avg=s/100;
-                    if(avg>70) triggerThreat("SONAR", `${Math.min(100,avg).toFixed(1)}%`, "Alta RPM", "Aproximação");
-                }, 800);
-            } catch(e) { console.error("Erro ao ativar microfone", e); }
+        // 4. MIRA ÓPTICA (Preparo para YOLOv8 via Backend)
+        let stream;
+        async function openCam() {
+            document.getElementById('cam-hud').style.display='block';
+            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }});
+            document.getElementById('cam-video').srcObject = stream;
+            // No futuro, os frames daqui serão enviados via WebSocket para o Python (YOLOv8)
+        }
+        function closeCam() {
+            document.getElementById('cam-hud').style.display='none';
+            if(stream) stream.getTracks().forEach(t=>t.stop());
         }
     </script>
 </body>
